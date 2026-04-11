@@ -4,9 +4,9 @@ class AppColors {
   AppColors._();
 
   // Brand
-  static const Color primary = Color(0xFFB41453);
-  static const Color secondary = Color(0xFFD81B60);
-  static const Color accent = Color(0xFFE95686);
+  static const Color primary = Color(0xFF8B2E3A);
+  static const Color secondary = Color(0xFFA33B49);
+  static const Color accent = Color(0xFFBC5867);
 
   // Light theme
   static const Color lightBackground = Color(0xFFFFFAFC);
@@ -43,17 +43,17 @@ class AppColors {
   static const Color info = Color(0xFF7A9CFF);
 
   // Shared UI accents
-  static const Color primarySoft = Color(0xFFF9DFEA);
-  static const Color primarySoftBorder = Color(0xFFF0C3D5);
-  static const Color primaryGlow = Color(0xFFE84E7D);
-  static const Color accentText = Color(0xFFE12468);
+  static const Color primarySoft = Color(0xFFF8EDEE);
+  static const Color primarySoftBorder = Color(0xFFE6C6CA);
+  static const Color primaryGlow = Color(0xFFB85A67);
+  static const Color accentText = Color(0xFF8B2E3A);
 
   static const Color dangerSurface = Color(0xFFFFEEF0);
   static const Color dangerBorder = Color(0xFFF5B8BD);
   static const Color dangerText = Color(0xFFE54843);
   static const Color dangerStrong = Color(0xFFE53935);
 
-  static const Color dashboardHero = Color(0xFF313B63);
+  static const Color dashboardHero = Color(0xFF4B2730);
   static const Color dashboardGlowLeft = Color(0xFFDCE5FF);
   static const Color dashboardGlowRight = Color(0xFFE6F6FF);
   static const Color dashboardPanelStart = Color(0xFFF3F5FF);
@@ -66,14 +66,14 @@ class AppColors {
   static const Color dashboardAvatarFallback = Color(0xFFE7F7F5);
   static const Color dashboardAvatarText = Color(0xFF4F6676);
 
-  static const Color syllabus = Color(0xFFE53B67);
-  static const Color lessonPlan = Color(0xFFFF8A24);
-  static const Color notices = Color(0xFF29A49D);
-  static const Color materials = Color(0xFFF5A31C);
-  static const Color assignments = Color(0xFF7B84EE);
-  static const Color quizzes = Color(0xFF73839D);
-  static const Color result = Color(0xFF2BC28C);
-  static const Color profile = Color(0xFF2F9CE5);
+  static const Color syllabus = Color(0xFFB74156);
+  static const Color lessonPlan = Color(0xFFD27A33);
+  static const Color notices = Color(0xFF4E8D84);
+  static const Color materials = Color(0xFFB98A3B);
+  static const Color assignments = Color(0xFF8573B8);
+  static const Color quizzes = Color(0xFF7F7584);
+  static const Color result = Color(0xFF4D9C73);
+  static const Color profile = Color(0xFF6E89B6);
 
   static bool isDark(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark;

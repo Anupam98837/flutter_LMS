@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -513,6 +514,11 @@ class _LoginPageState extends State<LoginPage> {
             child: _softGlow(
               color: AppColors.dangerSurface,
               size: 180,
+            ),
+          ),
+          Positioned.fill(
+            child: const IgnorePointer(
+              child: _PremiumLoginBackdrop(),
             ),
           ),
           SafeArea(
@@ -1168,5 +1174,283 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
+  }
+}
+
+class _PremiumLoginBackdrop extends StatefulWidget {
+  const _PremiumLoginBackdrop();
+
+  @override
+  State<_PremiumLoginBackdrop> createState() => _PremiumLoginBackdropState();
+}
+
+class _PremiumLoginBackdropState extends State<_PremiumLoginBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 16),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: _LoginBackdropPainter(progress: _controller.value),
+          child: const SizedBox.expand(),
+        );
+      },
+    );
+  }
+}
+
+class _LoginBackdropPainter extends CustomPainter {
+  final double progress;
+
+  const _LoginBackdropPainter({
+    required this.progress,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = progress * math.pi * 2;
+
+    _drawOrbitalRing(
+      canvas,
+      center: Offset(size.width * 0.18, size.height * 0.18),
+      radius: 42 + (math.sin(t) * 4),
+      strokeColor: AppColors.primary.withOpacity(0.10),
+      fillColor: AppColors.primarySoft.withOpacity(0.16),
+    );
+
+    _drawOrbitalRing(
+      canvas,
+      center: Offset(size.width * 0.84, size.height * 0.23),
+      radius: 32 + (math.cos(t + 0.8) * 4),
+      strokeColor: AppColors.info.withOpacity(0.10),
+      fillColor: AppColors.lightSurface3.withOpacity(0.30),
+    );
+
+    _drawCapsule(
+      canvas,
+      center: Offset(size.width * 0.12, size.height * 0.56),
+      width: 72,
+      height: 24,
+      angle: -0.55 + (math.sin(t + 0.7) * 0.05),
+      color: AppColors.primary.withOpacity(0.08),
+    );
+
+    _drawCapsule(
+      canvas,
+      center: Offset(size.width * 0.88, size.height * 0.64),
+      width: 68,
+      height: 22,
+      angle: 0.55 + (math.cos(t + 1.1) * 0.05),
+      color: AppColors.accent.withOpacity(0.09),
+    );
+
+    _drawGlassCard(
+      canvas,
+      rect: Rect.fromCenter(
+        center: Offset(
+          size.width * 0.17 + (math.sin(t + 1.4) * 6),
+          size.height * 0.74 + (math.cos(t + 1.4) * 8),
+        ),
+        width: 56,
+        height: 56,
+      ),
+      color: AppColors.primarySoft.withOpacity(0.22),
+      borderColor: AppColors.primary.withOpacity(0.09),
+      radius: 18,
+      angle: -0.18,
+    );
+
+    _drawGlassCard(
+      canvas,
+      rect: Rect.fromCenter(
+        center: Offset(
+          size.width * 0.84 + (math.cos(t + 2.0) * 7),
+          size.height * 0.80 + (math.sin(t + 2.0) * 6),
+        ),
+        width: 48,
+        height: 48,
+      ),
+      color: AppColors.lightSurface3.withOpacity(0.34),
+      borderColor: AppColors.info.withOpacity(0.10),
+      radius: 16,
+      angle: 0.22,
+    );
+
+    _drawArcCluster(
+      canvas,
+      center: Offset(size.width * 0.82, size.height * 0.43),
+      color: AppColors.primary.withOpacity(0.10),
+      secondaryColor: AppColors.info.withOpacity(0.08),
+      phase: t,
+    );
+
+    _drawArcCluster(
+      canvas,
+      center: Offset(size.width * 0.18, size.height * 0.36),
+      color: AppColors.secondary.withOpacity(0.09),
+      secondaryColor: AppColors.primarySoftBorder.withOpacity(0.20),
+      phase: t + 1.8,
+    );
+
+    _drawDots(
+      canvas,
+      center: Offset(size.width * 0.73, size.height * 0.16),
+      color: AppColors.primary.withOpacity(0.16),
+      phase: t + 0.3,
+    );
+    _drawDots(
+      canvas,
+      center: Offset(size.width * 0.27, size.height * 0.86),
+      color: AppColors.info.withOpacity(0.14),
+      phase: t + 2.3,
+    );
+  }
+
+  void _drawOrbitalRing(
+    Canvas canvas, {
+    required Offset center,
+    required double radius,
+    required Color strokeColor,
+    required Color fillColor,
+  }) {
+    final fillPaint = Paint()..color = fillColor;
+    final strokePaint = Paint()
+      ..color = strokeColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+
+    canvas.drawCircle(center, radius, fillPaint);
+    canvas.drawCircle(center, radius, strokePaint);
+    canvas.drawCircle(
+      center,
+      radius * 0.48,
+      strokePaint..strokeWidth = 1.0,
+    );
+  }
+
+  void _drawCapsule(
+    Canvas canvas, {
+    required Offset center,
+    required double width,
+    required double height,
+    required double angle,
+    required Color color,
+  }) {
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(angle);
+    final rect = Rect.fromCenter(
+      center: Offset.zero,
+      width: width,
+      height: height,
+    );
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(height / 2));
+    canvas.drawRRect(rrect, Paint()..color = color);
+    canvas.restore();
+  }
+
+  void _drawGlassCard(
+    Canvas canvas, {
+    required Rect rect,
+    required Color color,
+    required Color borderColor,
+    required double radius,
+    required double angle,
+  }) {
+    canvas.save();
+    canvas.translate(rect.center.dx, rect.center.dy);
+    canvas.rotate(angle);
+    final shiftedRect = Rect.fromCenter(
+      center: Offset.zero,
+      width: rect.width,
+      height: rect.height,
+    );
+    final rrect = RRect.fromRectAndRadius(
+      shiftedRect,
+      Radius.circular(radius),
+    );
+    canvas.drawRRect(rrect, Paint()..color = color);
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..color = borderColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1,
+    );
+    canvas.restore();
+  }
+
+  void _drawArcCluster(
+    Canvas canvas, {
+    required Offset center,
+    required Color color,
+    required Color secondaryColor,
+    required double phase,
+  }) {
+    final arc1 = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+    final arc2 = Paint()
+      ..color = secondaryColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: 36 + (math.sin(phase) * 2)),
+      0.3,
+      1.9,
+      false,
+      arc1,
+    );
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: 22 + (math.cos(phase) * 1.5)),
+      -2.4,
+      1.6,
+      false,
+      arc2,
+    );
+  }
+
+  void _drawDots(
+    Canvas canvas, {
+    required Offset center,
+    required Color color,
+    required double phase,
+  }) {
+    final paint = Paint()..color = color;
+    for (int i = 0; i < 5; i++) {
+      final angle = phase + (i * 1.2);
+      final point = Offset(
+        center.dx + (math.cos(angle) * (10 + i * 4)),
+        center.dy + (math.sin(angle) * (8 + i * 3)),
+      );
+      canvas.drawCircle(point, i.isEven ? 2.1 : 1.4, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LoginBackdropPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
