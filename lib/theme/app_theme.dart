@@ -4,15 +4,15 @@ import 'app_colors.dart';
 class AppTheme {
   AppTheme._();
 
-  static const double _fieldRadius = 18;
-  static const double _buttonRadius = 20;
-  static const double _cardRadius = 28;
+  static const double _fieldRadius = 16;
+  static const double _buttonRadius = 16;
+  static const double _cardRadius = 22;
 
   static const EdgeInsets _fieldPadding =
-      EdgeInsets.symmetric(horizontal: 18, vertical: 18);
+      EdgeInsets.symmetric(horizontal: 16, vertical: 16);
 
   static const EdgeInsets _buttonPadding =
-      EdgeInsets.symmetric(horizontal: 18, vertical: 16);
+      EdgeInsets.symmetric(horizontal: 18, vertical: 14);
 
   static final _lightInputBorder = OutlineInputBorder(
     borderRadius: BorderRadius.circular(_fieldRadius),
@@ -143,6 +143,7 @@ class AppTheme {
         maximumSize: const Size(double.infinity, 42),
         padding: _buttonPadding,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shadowColor: AppColors.primary.withOpacity(0.18),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_buttonRadius),
         ),
@@ -162,6 +163,7 @@ class AppTheme {
         maximumSize: const Size(double.infinity, 42),
         padding: _buttonPadding,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shadowColor: AppColors.secondary.withOpacity(0.18),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_buttonRadius),
         ),
@@ -212,7 +214,7 @@ class AppTheme {
         padding: const EdgeInsets.all(8),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(10),
         ),
       ),
     ),

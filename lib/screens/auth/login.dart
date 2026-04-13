@@ -480,21 +480,26 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final bool isBlocking = _submitting || _checkingSavedSession;
+    final backgroundColor = AppColors.background(context);
+    final surfaceColor = AppColors.surface(context);
+    final surface3Color = AppColors.surface3(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
 
     return Scaffold(
-      backgroundColor: AppColors.lightBackground,
+      backgroundColor: backgroundColor,
       body: Stack(
         children: [
           Positioned.fill(
             child: DecoratedBox(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.lightBackground,
-                    AppColors.lightSurface3,
-                    AppColors.lightSurface,
+                    backgroundColor,
+                    surface3Color,
+                    surfaceColor,
                   ],
                 ),
               ),
@@ -504,7 +509,7 @@ class _LoginPageState extends State<LoginPage> {
             top: -90,
             left: -50,
             child: _softGlow(
-              color: AppColors.primarySoft,
+              color: AppColors.softFill(context),
               size: 220,
             ),
           ),
@@ -512,7 +517,7 @@ class _LoginPageState extends State<LoginPage> {
             top: 170,
             right: -60,
             child: _softGlow(
-              color: AppColors.dangerSurface,
+              color: AppColors.dangerFill(context),
               size: 180,
             ),
           ),
@@ -536,7 +541,7 @@ class _LoginPageState extends State<LoginPage> {
                         'Welcome back',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: AppColors.lightTextPrimary,
+                          color: textPrimary,
                           fontSize: 29,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -1.1,
@@ -548,7 +553,7 @@ class _LoginPageState extends State<LoginPage> {
                         'Enter your credentials to access your\naccount.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: AppColors.lightTextSecondary,
+                          color: textSecondary,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           height: 1.45,
@@ -594,7 +599,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ? FontAwesomeIcons.eye
                                 : FontAwesomeIcons.eyeSlash,
                             size: 20,
-                            color: AppColors.lightTextSecondary,
+                            color: textSecondary,
                           ),
                         ),
                         onChanged: (_) {
@@ -621,12 +626,12 @@ class _LoginPageState extends State<LoginPage> {
                               decoration: BoxDecoration(
                                 color: _keepLoggedIn
                                     ? AppColors.primaryGlow
-                                    : Colors.white,
+                                    : surfaceColor,
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(
                                   color: _keepLoggedIn
                                       ? AppColors.primaryGlow
-                                      : AppColors.lightBorderSoft,
+                                      : AppColors.borderSoft(context),
                                 ),
                                 boxShadow: _keepLoggedIn
                                     ? [
@@ -653,7 +658,7 @@ class _LoginPageState extends State<LoginPage> {
                             child: Text(
                               'Keep me signed in',
                               style: TextStyle(
-                                color: AppColors.lightTextSecondary,
+                                color: textSecondary,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -717,7 +722,7 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 36),
                       RichText(
                         textAlign: TextAlign.center,
-                        text: const TextSpan(
+                        text: TextSpan(
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -726,7 +731,7 @@ class _LoginPageState extends State<LoginPage> {
                             TextSpan(
                               text: "Don't have an account? ",
                               style: TextStyle(
-                                color: AppColors.lightTextSecondary,
+                                color: textSecondary,
                               ),
                             ),
                             TextSpan(
@@ -752,6 +757,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildBrandBlock() {
+    final surfaceColor = AppColors.surface(context);
+    final borderColor = AppColors.borderSoft(context);
+    final inkColor = AppColors.ink(context);
+    final textSecondary = AppColors.textSecondary(context);
     return Column(
       children: [
         Container(
@@ -759,12 +768,12 @@ class _LoginPageState extends State<LoginPage> {
           height: 94,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: surfaceColor,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.lightBorderSoft),
+            border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
-                color: AppColors.lightInk.withOpacity(0.05),
+                color: inkColor.withOpacity(0.05),
                 blurRadius: 18,
                 offset: const Offset(0, 8),
               ),
@@ -779,7 +788,7 @@ class _LoginPageState extends State<LoginPage> {
         Text(
           'Hallienz LMS',
           style: TextStyle(
-            color: AppColors.lightTextSecondary.withOpacity(0.82),
+            color: textSecondary.withOpacity(0.82),
             fontSize: 15,
             fontWeight: FontWeight.w700,
           ),
@@ -790,15 +799,19 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildInlineNotice() {
     final InlineNotice notice = _notice!;
+    final fillColor = AppColors.dangerFill(context);
+    final borderColor = AppColors.dangerOutline(context);
+    final accentColor = AppColors.dangerAccent(context);
+    final labelColor = AppColors.dangerLabel(context);
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
       decoration: BoxDecoration(
-        color: AppColors.dangerSurface,
+        color: fillColor,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: AppColors.dangerBorder,
+          color: borderColor,
           width: 1.2,
         ),
       ),
@@ -811,15 +824,15 @@ class _LoginPageState extends State<LoginPage> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: AppColors.dangerStrong,
+                color: accentColor,
                 width: 1.4,
               ),
             ),
-            child: const Center(
+            child: Center(
               child: FaIcon(
                 FontAwesomeIcons.exclamation,
                 size: 14,
-                color: AppColors.dangerStrong,
+                color: accentColor,
               ),
             ),
           ),
@@ -832,8 +845,8 @@ class _LoginPageState extends State<LoginPage> {
                 children: [
                   Text(
                     _noticeTitle(notice.type),
-                    style: const TextStyle(
-                      color: AppColors.dangerStrong,
+                    style: TextStyle(
+                      color: accentColor,
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                     ),
@@ -841,8 +854,8 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 6),
                   Text(
                     notice.message,
-                    style: const TextStyle(
-                      color: AppColors.dangerText,
+                    style: TextStyle(
+                      color: labelColor,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       height: 1.35,
@@ -855,12 +868,12 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(width: 10),
           GestureDetector(
             onTap: _clearNotice,
-            child: const Padding(
+            child: Padding(
               padding: EdgeInsets.only(top: 4),
               child: Icon(
                 Icons.close_rounded,
                 size: 24,
-                color: AppColors.dangerText,
+                color: labelColor,
               ),
             ),
           ),
@@ -881,19 +894,24 @@ class _LoginPageState extends State<LoginPage> {
     bool obscureText = false,
     bool hasError = false,
   }) {
+    final surfaceColor = AppColors.surface(context);
+    final borderSoft = AppColors.borderSoft(context);
+    final inkColor = AppColors.ink(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
     final Color borderColor = hasError
-        ? AppColors.primarySoftBorder
-        : AppColors.lightBorderSoft;
+        ? AppColors.softBorder(context)
+        : borderSoft;
     final Color iconColor =
-        hasError ? AppColors.dangerStrong : AppColors.lightTextSecondary;
+        hasError ? AppColors.dangerAccent(context) : textSecondary;
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.lightInk.withOpacity(0.05),
+            color: inkColor.withOpacity(0.05),
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),
@@ -907,20 +925,20 @@ class _LoginPageState extends State<LoginPage> {
         onSubmitted: onFieldSubmitted,
         textInputAction: textInputAction,
         textAlignVertical: TextAlignVertical.center,
-        style: const TextStyle(
-          color: AppColors.lightTextPrimary,
+        style: TextStyle(
+          color: textPrimary,
           fontWeight: FontWeight.w700,
           fontSize: 15,
         ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(
-            color: AppColors.lightTextSecondary.withOpacity(0.92),
+            color: textSecondary.withOpacity(0.92),
             fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: surfaceColor,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 18,
             vertical: 19,
@@ -954,21 +972,21 @@ class _LoginPageState extends State<LoginPage> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(
-              color: hasError ? AppColors.primarySoftBorder : AppColors.primary,
+              color: hasError ? AppColors.softBorder(context) : AppColors.primary,
               width: 1.3,
             ),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(
-              color: AppColors.primarySoftBorder,
+            borderSide: BorderSide(
+              color: AppColors.softBorder(context),
               width: 1.1,
             ),
           ),
           focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(
-              color: AppColors.primarySoftBorder,
+            borderSide: BorderSide(
+              color: AppColors.softBorder(context),
               width: 1.3,
             ),
           ),
@@ -978,13 +996,20 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildLoadingOverlay() {
+    final surfaceColor = AppColors.surface(context);
+    final inkColor = AppColors.ink(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
     return Positioned.fill(
       child: Stack(
         children: [
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 11, sigmaY: 11),
             child: Container(
-              color: Colors.white.withOpacity(0.55),
+              color: (AppColors.isDark(context)
+                      ? AppColors.darkBackground
+                      : AppColors.lightSurface2)
+                  .withOpacity(0.55),
             ),
           ),
           Center(
@@ -992,11 +1017,11 @@ class _LoginPageState extends State<LoginPage> {
               width: 224,
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: surfaceColor,
                 borderRadius: BorderRadius.circular(22),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.lightInk.withOpacity(0.10),
+                    color: inkColor.withOpacity(0.10),
                     blurRadius: 22,
                     offset: const Offset(0, 12),
                   ),
@@ -1010,9 +1035,9 @@ class _LoginPageState extends State<LoginPage> {
                     height: 86,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.primarySoft,
+                      color: AppColors.softFill(context),
                       border: Border.all(
-                        color: AppColors.primarySoftBorder,
+                        color: AppColors.softBorder(context),
                         width: 4,
                       ),
                     ),
@@ -1026,11 +1051,11 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Text(
+                  Text(
                     'Signing you in...',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: AppColors.lightTextPrimary,
+                      color: textPrimary,
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1041,8 +1066,8 @@ class _LoginPageState extends State<LoginPage> {
                         ? 'Restoring your last session'
                         : 'Verifying credentials',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.lightTextSecondary,
+                    style: TextStyle(
+                      color: textSecondary,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1057,13 +1082,19 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildSuccessOverlay() {
+    final surfaceColor = AppColors.surface(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
     return Positioned.fill(
       child: Stack(
         children: [
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
-              color: Colors.white.withOpacity(0.60),
+              color: (AppColors.isDark(context)
+                      ? AppColors.darkBackground
+                      : AppColors.lightSurface2)
+                  .withOpacity(0.60),
             ),
           ),
           Center(
@@ -1073,7 +1104,7 @@ class _LoginPageState extends State<LoginPage> {
               margin: const EdgeInsets.symmetric(horizontal: 20),
               padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: surfaceColor,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
@@ -1105,19 +1136,19 @@ class _LoginPageState extends State<LoginPage> {
                   Text(
                     'Signed in${_successUserName == null ? '' : ' — Welcome back.'}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.lightTextPrimary,
+                    style: TextStyle(
+                      color: textPrimary,
                       fontSize: 23,
                       fontWeight: FontWeight.w900,
                       height: 1.22,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Your authentication was successful.\nRedirecting you to your dashboard.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: AppColors.lightTextSecondary,
+                      color: textSecondary,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       height: 1.45,
@@ -1205,11 +1236,15 @@ class _PremiumLoginBackdropState extends State<_PremiumLoginBackdrop>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         return CustomPaint(
-          painter: _LoginBackdropPainter(progress: _controller.value),
+          painter: _LoginBackdropPainter(
+            progress: _controller.value,
+            isDark: isDark,
+          ),
           child: const SizedBox.expand(),
         );
       },
@@ -1219,29 +1254,33 @@ class _PremiumLoginBackdropState extends State<_PremiumLoginBackdrop>
 
 class _LoginBackdropPainter extends CustomPainter {
   final double progress;
+  final bool isDark;
 
   const _LoginBackdropPainter({
     required this.progress,
+    required this.isDark,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final t = progress * math.pi * 2;
+    final fade = isDark ? 0.28 : 1.0;
+    final fillFade = isDark ? 0.18 : 1.0;
 
     _drawOrbitalRing(
       canvas,
       center: Offset(size.width * 0.18, size.height * 0.18),
       radius: 42 + (math.sin(t) * 4),
-      strokeColor: AppColors.primary.withOpacity(0.10),
-      fillColor: AppColors.primarySoft.withOpacity(0.16),
+      strokeColor: AppColors.primary.withOpacity(0.10 * fade),
+      fillColor: AppColors.primarySoft.withOpacity(0.16 * fillFade),
     );
 
     _drawOrbitalRing(
       canvas,
       center: Offset(size.width * 0.84, size.height * 0.23),
       radius: 32 + (math.cos(t + 0.8) * 4),
-      strokeColor: AppColors.info.withOpacity(0.10),
-      fillColor: AppColors.lightSurface3.withOpacity(0.30),
+      strokeColor: AppColors.info.withOpacity(0.10 * fade),
+      fillColor: AppColors.lightSurface3.withOpacity(0.30 * fillFade),
     );
 
     _drawCapsule(
@@ -1250,7 +1289,7 @@ class _LoginBackdropPainter extends CustomPainter {
       width: 72,
       height: 24,
       angle: -0.55 + (math.sin(t + 0.7) * 0.05),
-      color: AppColors.primary.withOpacity(0.08),
+      color: AppColors.primary.withOpacity(0.08 * fade),
     );
 
     _drawCapsule(
@@ -1259,7 +1298,7 @@ class _LoginBackdropPainter extends CustomPainter {
       width: 68,
       height: 22,
       angle: 0.55 + (math.cos(t + 1.1) * 0.05),
-      color: AppColors.accent.withOpacity(0.09),
+      color: AppColors.accent.withOpacity(0.09 * fade),
     );
 
     _drawGlassCard(
@@ -1272,8 +1311,8 @@ class _LoginBackdropPainter extends CustomPainter {
         width: 56,
         height: 56,
       ),
-      color: AppColors.primarySoft.withOpacity(0.22),
-      borderColor: AppColors.primary.withOpacity(0.09),
+      color: AppColors.primarySoft.withOpacity(0.22 * fillFade),
+      borderColor: AppColors.primary.withOpacity(0.09 * fade),
       radius: 18,
       angle: -0.18,
     );
@@ -1288,8 +1327,8 @@ class _LoginBackdropPainter extends CustomPainter {
         width: 48,
         height: 48,
       ),
-      color: AppColors.lightSurface3.withOpacity(0.34),
-      borderColor: AppColors.info.withOpacity(0.10),
+      color: AppColors.lightSurface3.withOpacity(0.34 * fillFade),
+      borderColor: AppColors.info.withOpacity(0.10 * fade),
       radius: 16,
       angle: 0.22,
     );
@@ -1297,29 +1336,29 @@ class _LoginBackdropPainter extends CustomPainter {
     _drawArcCluster(
       canvas,
       center: Offset(size.width * 0.82, size.height * 0.43),
-      color: AppColors.primary.withOpacity(0.10),
-      secondaryColor: AppColors.info.withOpacity(0.08),
+      color: AppColors.primary.withOpacity(0.10 * fade),
+      secondaryColor: AppColors.info.withOpacity(0.08 * fade),
       phase: t,
     );
 
     _drawArcCluster(
       canvas,
       center: Offset(size.width * 0.18, size.height * 0.36),
-      color: AppColors.secondary.withOpacity(0.09),
-      secondaryColor: AppColors.primarySoftBorder.withOpacity(0.20),
+      color: AppColors.secondary.withOpacity(0.09 * fade),
+      secondaryColor: AppColors.primarySoftBorder.withOpacity(0.20 * fillFade),
       phase: t + 1.8,
     );
 
     _drawDots(
       canvas,
       center: Offset(size.width * 0.73, size.height * 0.16),
-      color: AppColors.primary.withOpacity(0.16),
+      color: AppColors.primary.withOpacity(0.16 * fade),
       phase: t + 0.3,
     );
     _drawDots(
       canvas,
       center: Offset(size.width * 0.27, size.height * 0.86),
-      color: AppColors.info.withOpacity(0.14),
+      color: AppColors.info.withOpacity(0.14 * fade),
       phase: t + 2.3,
     );
   }
