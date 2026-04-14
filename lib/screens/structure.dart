@@ -9,6 +9,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hallienzlms/config/appConfig.dart';
 import 'package:hallienzlms/screens/common/dashboard/dashboard_page.dart';
 import 'package:hallienzlms/screens/common/profile/profile_page.dart';
+import 'package:hallienzlms/screens/modules/assignments/my_assignments_page.dart';
+import 'package:hallienzlms/screens/modules/notices/my_notices_page.dart';
+import 'package:hallienzlms/screens/modules/study_materials/my_study_materials_page.dart';
 import 'package:hallienzlms/screens/modules/syllabus/my_syllabus_page.dart';
 import 'package:hallienzlms/screens/widgets/coming_soon_page.dart';
 import 'package:hallienzlms/theme/app_colors.dart';
@@ -38,6 +41,11 @@ class _StructurePageState extends State<StructurePage> {
       label: 'Study',
       icon: Icons.menu_book_outlined,
       activeIcon: Icons.menu_book_rounded,
+    ),
+    _BottomNavItem(
+      label: 'Notice',
+      icon: Icons.notifications_none_rounded,
+      activeIcon: Icons.notifications_rounded,
     ),
     _BottomNavItem(
       label: 'Assign',
@@ -255,22 +263,32 @@ class _StructurePageState extends State<StructurePage> {
     }
 
     if (label == 'Syllabus') {
-      _handleBottomNavTap(4);
+      _handleBottomNavTap(5);
       return;
     }
 
     if (label == 'Lesson Plan') {
-      _handleBottomNavTap(4);
+      _handleBottomNavTap(5);
       return;
     }
 
-    if (label == 'Assignments') {
+    if (label == 'Notices') {
       _handleBottomNavTap(2);
       return;
     }
 
-    if (label == 'Quizzes' || label == 'Result') {
+    if (label == 'Materials') {
+      _handleBottomNavTap(1);
+      return;
+    }
+
+    if (label == 'Assignments') {
       _handleBottomNavTap(3);
+      return;
+    }
+
+    if (label == 'Quizzes' || label == 'Result') {
+      _handleBottomNavTap(4);
       return;
     }
 
@@ -314,7 +332,13 @@ class _StructurePageState extends State<StructurePage> {
                             shortcuts: _shortcuts,
                             onShortcutTap: _handleDashboardShortcutTap,
                           )
-                        : _currentIndex == 4
+                        : _currentIndex == 1
+                            ? const MyStudyMaterialsPage()
+                        : _currentIndex == 2
+                            ? const MyNoticesPage()
+                        : _currentIndex == 3
+                            ? const MyAssignmentsPage()
+                        : _currentIndex == 5
                             ? const MySyllabusPage()
                         : ComingSoonPage(
                             title: _navItems[_currentIndex].label,
@@ -454,7 +478,7 @@ class _StructurePageState extends State<StructurePage> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+          padding: const EdgeInsets.fromLTRB(6, 4, 6, 2),
           child: Row(
             children: List.generate(_navItems.length, (index) {
               final item = _navItems[index];
@@ -462,28 +486,28 @@ class _StructurePageState extends State<StructurePage> {
 
               return Expanded(
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(14),
                   onTap: () => _handleBottomNavTap(index),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           isSelected ? item.activeIcon : item.icon,
-                          size: 27,
+                          size: 23,
                           color: isSelected
                               ? AppColors.primary
                               : mutedColor,
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 2),
                         Text(
                           item.label,
                           style: TextStyle(
                             color: isSelected
                                 ? AppColors.primary
                                 : mutedColor,
-                            fontSize: 10.5,
+                            fontSize: 9.5,
                             fontWeight: isSelected
                                 ? FontWeight.w800
                                 : FontWeight.w700,

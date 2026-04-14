@@ -27,6 +27,7 @@ class _LessonPlanViewPageState extends State<LessonPlanViewPage> {
   bool _refreshing = false;
   String? _errorMessage;
   _LessonPlanPayload? _payload;
+  String _selectedLessonFilter = 'all';
 
   @override
   void initState() {
@@ -86,14 +87,14 @@ class _LessonPlanViewPageState extends State<LessonPlanViewPage> {
           backgroundColor: surfaceColor,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             side: BorderSide(color: borderColor),
           ),
           title: Text(
             title,
             style: TextStyle(
               color: textPrimary,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
             ),
           ),
           content: Text(
@@ -101,7 +102,7 @@ class _LessonPlanViewPageState extends State<LessonPlanViewPage> {
             style: TextStyle(
               color: textSecondary,
               fontSize: 13,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
               height: 1.45,
             ),
           ),
@@ -233,6 +234,7 @@ class _LessonPlanViewPageState extends State<LessonPlanViewPage> {
       if (!mounted) return;
       setState(() {
         _payload = _parsePayload(payload);
+        _selectedLessonFilter = 'all';
       });
     } catch (error) {
       if (!mounted) return;
@@ -249,471 +251,485 @@ class _LessonPlanViewPageState extends State<LessonPlanViewPage> {
     }
   }
 
-  Widget _buildHeader(_LessonPlanPayload payload) {
-    final textPrimary = AppColors.textPrimary(context);
-    final textSecondary = AppColors.textSecondary(context);
-    final chips = <Widget>[
-      if (payload.subject.syllabusCode.isNotEmpty)
-        _InfoChip(label: payload.subject.syllabusCode),
-      if (payload.subject.subjectCode.isNotEmpty)
-        _InfoChip(label: payload.subject.subjectCode),
-      if (payload.subject.status.isNotEmpty)
-        _InfoChip(label: payload.subject.status),
+  List<_LessonPlanItem> _filteredLessons(List<_LessonPlanItem> lessons) {
+    if (_selectedLessonFilter == 'all') return lessons;
+    return lessons.where((lesson) {
+      final lessonNo = lesson.lessonNo.trim();
+      if (lessonNo.isNotEmpty) return lessonNo == _selectedLessonFilter;
+      final index = lessons.indexOf(lesson);
+      return (index + 1).toString() == _selectedLessonFilter;
+    }).toList();
+  }
+
+  List<DropdownMenuItem<String>> _lessonFilterItems(List<_LessonPlanItem> lessons) {
+    final items = <DropdownMenuItem<String>>[
+      const DropdownMenuItem<String>(
+        value: 'all',
+        child: Text('All Lessons'),
+      ),
     ];
 
-    final subtitleParts = [
-      if (payload.subject.courseName.isNotEmpty) payload.subject.courseName,
-      if (payload.subject.semester.isNotEmpty)
-        'Semester ${payload.subject.semester}',
-      if (payload.subject.intakeYear.isNotEmpty)
-        'Intake ${payload.subject.intakeYear}',
-    ];
+    for (int i = 0; i < lessons.length; i++) {
+      final lessonNo = lessons[i].lessonNo.trim().isNotEmpty
+          ? lessons[i].lessonNo.trim()
+          : (i + 1).toString();
+      items.add(
+        DropdownMenuItem<String>(
+          value: lessonNo,
+          child: Text('Lesson $lessonNo'),
+        ),
+      );
+    }
+    return items;
+  }
 
-    return Column(
+  Widget _buildTopInfo(_LessonPlanPayload payload) {
+  final textPrimary = AppColors.textPrimary(context);
+  final textSecondary = AppColors.textSecondary(context);
+  final borderColor = AppColors.borderSoft(context);
+
+  final title = payload.subject.name.isNotEmpty
+      ? payload.subject.name
+      : widget.subjectTitle;
+
+  final code = payload.subject.subjectCode.trim();
+
+  final ltpValue = [
+    payload.subject.lectureHours.isNotEmpty
+        ? payload.subject.lectureHours
+        : '—',
+    payload.subject.tutorialHours.isNotEmpty
+        ? payload.subject.tutorialHours
+        : '—',
+    payload.subject.practicalHours.isNotEmpty
+        ? payload.subject.practicalHours
+        : '—',
+  ].join(' / ');
+
+  final creditValue = payload.subject.creditPoints.isNotEmpty
+      ? payload.subject.creditPoints
+      : '—';
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+    decoration: BoxDecoration(
+      border: Border.all(color: borderColor.withOpacity(.7)),
+      borderRadius: BorderRadius.circular(16),
+      color: AppColors.surface(context),
+    ),
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          payload.subject.name.isNotEmpty
-              ? payload.subject.name
-              : widget.subjectTitle,
-          style: TextStyle(
-            color: textPrimary,
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            height: 1.15,
-          ),
-        ),
-        if (subtitleParts.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(
-            subtitleParts.join(' • '),
-            style: TextStyle(
-              color: textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-        if (chips.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: chips,
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildOverview(_LessonPlanPayload payload) {
-    final borderColor = AppColors.borderSoft(context);
-    final surfaceColor = AppColors.surface(context);
-    final textPrimary = AppColors.textPrimary(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Text(
-              'Overview',
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          _InfoRow(
-            label: 'Institution',
-            value: payload.subject.institutionName,
-          ),
-          _InfoRow(
-            label: 'Course',
-            value: payload.subject.courseName,
-          ),
-          _InfoRow(
-            label: 'Paper Code',
-            value: payload.subject.subjectCode,
-          ),
-          _InfoRow(
-            label: 'Subject Type',
-            value: payload.subject.subjectType,
-          ),
-          _InfoRow(
-            label: 'Semester / Intake',
-            value: [
-              if (payload.subject.semester.isNotEmpty)
-                'Sem ${payload.subject.semester}',
-              if (payload.subject.intakeYear.isNotEmpty)
-                payload.subject.intakeYear,
-            ].join(' • '),
-            isLast: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetrics(_LessonPlanPayload payload) {
-    final borderColor = AppColors.borderSoft(context);
-    final surfaceColor = AppColors.surface(context);
-    final textPrimary = AppColors.textPrimary(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Text(
-              'Key Metrics',
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          _InfoRow(
-            label: 'Credit Points',
-            value: payload.subject.creditPoints,
-          ),
-          _InfoRow(
-            label: 'L / T / P',
-            value: [
-              payload.subject.lectureHours.isNotEmpty
-                  ? payload.subject.lectureHours
-                  : '—',
-              payload.subject.tutorialHours.isNotEmpty
-                  ? payload.subject.tutorialHours
-                  : '—',
-              payload.subject.practicalHours.isNotEmpty
-                  ? payload.subject.practicalHours
-                  : '—',
-            ].join(' / '),
-          ),
-          _InfoRow(
-            label: 'Total Lessons',
-            value: payload.lessonCount,
-            isLast: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSection({
-    required String title,
-    required String content,
-  }) {
-    if (content.trim().isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final borderColor = AppColors.borderSoft(context);
-    final surfaceColor = AppColors.surface(context);
-    final textPrimary = AppColors.textPrimary(context);
-    final textSecondary = AppColors.textSecondary(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            content,
-            style: TextStyle(
-              color: textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              height: 1.55,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLessonCard(_LessonPlanItem lesson, int index) {
-    final borderColor = AppColors.borderSoft(context);
-    final surfaceColor = AppColors.surface(context);
-    final softFill = AppColors.surface3(context);
-    final textPrimary = AppColors.textPrimary(context);
-    final textSecondary = AppColors.textSecondary(context);
-    final lessonNumber = lesson.lessonNo.isNotEmpty
-        ? lesson.lessonNo
-        : (index + 1).toString().padLeft(2, '0');
-
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-        child: Column(
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: softFill,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: borderColor),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    lessonNumber,
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        lesson.title.isNotEmpty
-                            ? lesson.title
-                            : 'Lesson $lessonNumber',
-                        style: TextStyle(
-                          color: textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          height: 1.25,
-                        ),
-                      ),
-                      if (lesson.unitTitle.isNotEmpty) ...[
-                        const SizedBox(height: 5),
-                        Text(
-                          lesson.unitTitle,
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(.10),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: const Icon(
+                Icons.menu_book_rounded,
+                size: 15,
+                color: AppColors.primary,
+              ),
             ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _InfoChip(label: lesson.lessonType, fallback: 'Lesson Type'),
-                _InfoChip(label: lesson.deliveryMode, fallback: 'Delivery'),
-                _InfoChip(label: lesson.completionStatus, fallback: 'Status'),
-                _InfoChip(
-                  label: lesson.durationHours.isNotEmpty
-                      ? '${lesson.durationHours} hrs'
-                      : '',
-                  fallback: 'Duration',
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                code.isNotEmpty ? '$title ($code)' : title,
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
                 ),
-              ],
+                textAlign: TextAlign.left,
+              ),
             ),
-            if (lesson.topicText.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _LessonMiniSection(
-                title: 'Topic Details',
-                content: lesson.topicText,
-              ),
-            ],
-            if (lesson.learningObjectives.isNotEmpty ||
-                lesson.teachingMethod.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide = constraints.maxWidth > 560;
-                  final children = <Widget>[
-                    if (lesson.learningObjectives.isNotEmpty)
-                      _LessonMiniSection(
-                        title: 'Learning Objectives',
-                        content: lesson.learningObjectives,
-                      ),
-                    if (lesson.teachingMethod.isNotEmpty)
-                      _LessonMiniSection(
-                        title: 'Teaching Method',
-                        content: lesson.teachingMethod,
-                      ),
-                  ];
-
-                  if (!isWide || children.length == 1) {
-                    return Column(
-                      children: [
-                        for (int i = 0; i < children.length; i++) ...[
-                          children[i],
-                          if (i != children.length - 1)
-                            const SizedBox(height: 12),
-                        ],
-                      ],
-                    );
-                  }
-
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: children[0]),
-                      const SizedBox(width: 12),
-                      Expanded(child: children[1]),
-                    ],
-                  );
-                },
-              ),
-            ],
-            if (lesson.assessmentMethod.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _LessonMiniSection(
-                title: 'Assessment Method',
-                content: lesson.assessmentMethod,
-              ),
-            ],
-            if (lesson.referenceMaterial.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _LessonMiniSection(
-                title: 'Reference Material',
-                content: lesson.referenceMaterial,
-              ),
-            ],
-            if (lesson.remarks.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _LessonMiniSection(
-                title: 'Remarks',
-                content: lesson.remarks,
-              ),
-            ],
           ],
         ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Icon(
+              Icons.schedule_rounded,
+              size: 14,
+              color: AppColors.primary.withOpacity(.85),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'LTP: $ltpValue',
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Icon(
+              Icons.star_rounded,
+              size: 14,
+              color: AppColors.primary.withOpacity(.85),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Credit: $creditValue',
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+ Widget _buildLessonBlock(_LessonPlanItem lesson, int index) {
+  final textPrimary = AppColors.textPrimary(context);
+  final textSecondary = AppColors.textSecondary(context);
+  final dividerColor = AppColors.borderSoft(context);
+
+  final lessonNumber = lesson.lessonNo.isNotEmpty
+      ? lesson.lessonNo
+      : (index + 1).toString();
+
+  Widget buildMiniBadge({
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
+    if (text.trim().isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(.22)),
       ),
-    );
-  }
-
-  Widget _buildContent() {
-    final payload = _payload;
-    if (payload == null) {
-      return _buildErrorCard(_errorMessage ?? 'Unable to load lesson plan.');
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHeader(payload),
-        const SizedBox(height: 18),
-        _buildOverview(payload),
-        const SizedBox(height: 14),
-        _buildMetrics(payload),
-        if (payload.subject.topicText.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          _buildSection(
-            title: 'Syllabus Description',
-            content: payload.subject.topicText,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 11.8,
+              fontWeight: FontWeight.w700,
+              height: 1.2,
+            ),
           ),
         ],
-        const SizedBox(height: 18),
-        Text(
-          'Detailed Lesson Plans',
-          style: TextStyle(
-            color: AppColors.textPrimary(context),
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (payload.lessons.isEmpty)
-          _buildSection(
-            title: 'Lesson Plans',
-            content: 'No lesson plans found for this paper.',
-          )
-        else
-          Column(
-            children: [
-              for (int i = 0; i < payload.lessons.length; i++) ...[
-                _buildLessonCard(payload.lessons[i], i),
-                if (i != payload.lessons.length - 1)
-                  const SizedBox(height: 12),
-              ],
-            ],
-          ),
-      ],
+      ),
     );
   }
 
+  return Container(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    decoration: BoxDecoration(
+      border: Border(
+        top: BorderSide(color: dividerColor),
+      ),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 24,
+          child: Text(
+            lessonNumber,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              height: 1.2,
+            ),
+            textAlign: TextAlign.left,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  lesson.title.isNotEmpty
+                      ? lesson.title
+                      : 'Lesson $lessonNumber',
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                  textAlign: TextAlign.left,
+                ),
+                if (lesson.unitTitle.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    lesson.unitTitle,
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.left,
+                  ),
+                ],
+                const SizedBox(height: 10),
+
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (lesson.lessonType.isNotEmpty)
+                      buildMiniBadge(
+                        icon: Icons.category_rounded,
+                        text: lesson.lessonType,
+                        color: Colors.indigo,
+                      ),
+                    if (lesson.deliveryMode.isNotEmpty)
+                      buildMiniBadge(
+                        icon: Icons.play_circle_outline_rounded,
+                        text: lesson.deliveryMode,
+                        color: Colors.teal,
+                      ),
+                    if (lesson.durationHours.isNotEmpty)
+                      buildMiniBadge(
+                        icon: Icons.schedule_rounded,
+                        text: '${lesson.durationHours} hrs',
+                        color: Colors.orange,
+                      ),
+                  ],
+                ),
+
+                if (lesson.topicText.isNotEmpty)
+                  _TextSection(
+                    title: 'Topic',
+                    content: lesson.topicText,
+                    icon: Icons.notes_rounded,
+                  ),
+                if (lesson.learningObjectives.isNotEmpty)
+                  _TextSection(
+                    title: 'Learning Objectives',
+                    content: lesson.learningObjectives,
+                    icon: Icons.flag_rounded,
+                  ),
+                if (lesson.teachingMethod.isNotEmpty)
+                  _TextSection(
+                    title: 'Teaching Method',
+                    content: lesson.teachingMethod,
+                    icon: Icons.lightbulb_outline_rounded,
+                  ),
+                if (lesson.assessmentMethod.isNotEmpty)
+                  _TextSection(
+                    title: 'Assessment Method',
+                    content: lesson.assessmentMethod,
+                    icon: Icons.fact_check_outlined,
+                  ),
+                if (lesson.referenceMaterial.isNotEmpty)
+                  _TextSection(
+                    title: 'Reference Material',
+                    content: lesson.referenceMaterial,
+                    icon: Icons.bookmark_outline_rounded,
+                  ),
+                if (lesson.remarks.isNotEmpty)
+                  _TextSection(
+                    title: 'Remarks',
+                    content: lesson.remarks,
+                    icon: Icons.mode_comment_outlined,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+ Widget _buildContent() {
+  final payload = _payload;
+  if (payload == null) {
+    return _buildErrorCard(_errorMessage ?? 'Unable to load lesson plan.');
+  }
+
+  final filteredLessons = _filteredLessons(payload.lessons);
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _buildTopInfo(payload),
+      if (payload.subject.topicText.isNotEmpty) ...[
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Icon(
+              Icons.description_outlined,
+              size: 15,
+              color: AppColors.textSecondary(context),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Syllabus Description',
+              style: TextStyle(
+                color: AppColors.textSecondary(context),
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Text(
+            payload.subject.topicText,
+            style: TextStyle(
+              color: AppColors.textSecondary(context),
+              fontSize: 12.8,
+              fontWeight: FontWeight.w500,
+              height: 1.6,
+            ),
+            textAlign: TextAlign.left,
+          ),
+        ),
+      ],
+      const SizedBox(height: 18),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Icon(
+                  Icons.menu_book_outlined,
+                  size: 15,
+                  color: AppColors.textSecondary(context),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Detailed Lesson Plan',
+                  style: TextStyle(
+                    color: AppColors.textSecondary(context),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 34,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(.22),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedLessonFilter,
+                    isDense: true,
+                    borderRadius: BorderRadius.circular(12),
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    dropdownColor: AppColors.surface(context),
+                    items: _lessonFilterItems(payload.lessons),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _selectedLessonFilter = value;
+                      });
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      if (filteredLessons.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Text(
+            'No lesson plans found for this filter.',
+            style: TextStyle(
+              color: AppColors.textSecondary(context),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.left,
+          ),
+        )
+      else
+        Column(
+          children: [
+            for (int i = 0; i < filteredLessons.length; i++)
+              _buildLessonBlock(filteredLessons[i], i),
+          ],
+        ),
+    ],
+  );
+}
+
   Widget _buildErrorCard(String message) {
-    final borderColor = AppColors.borderSoft(context);
-    final surfaceColor = AppColors.surface(context);
     final textPrimary = AppColors.textPrimary(context);
     final textSecondary = AppColors.textSecondary(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         children: [
           Icon(
             Icons.error_outline_rounded,
             color: textSecondary,
-            size: 28,
+            size: 26,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
-            'Lesson Plan Preview',
+            'Lesson Plan',
             style: TextStyle(
               color: textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             message,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: textSecondary,
               fontSize: 13,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
               height: 1.45,
             ),
           ),
@@ -731,57 +747,39 @@ class _LessonPlanViewPageState extends State<LessonPlanViewPage> {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.surface(context),
+        backgroundColor: backgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         titleSpacing: 0,
-        title: Row(
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.primary.withOpacity(0.16),
-                ),
-              ),
-              child: const Icon(
-                Icons.menu_book_rounded,
-                size: 16,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Lesson Plan',
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 15.5,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
+        title: Text(
+          'Lesson Plan',
+          style: TextStyle(
+            color: textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         actions: [
-          TextButton.icon(
+          IconButton(
             onPressed: () => _showNotice(
               title: 'Export PDF',
               message: 'PDF export will be connected here next.',
             ),
-            icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
-            label: const Text('Export'),
+            icon: Icon(
+              Icons.picture_as_pdf_outlined,
+              color: textSecondary,
+              size: 20,
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
       ),
       body: RefreshIndicator(
-        color: AppColors.dashboardMutedColor(context),
+        color: AppColors.textSecondary(context),
         onRefresh: () => _loadLessonPlan(showLoader: false),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           child: _loading
               ? SizedBox(
                   height: MediaQuery.of(context).size.height * 0.55,
@@ -790,20 +788,20 @@ class _LessonPlanViewPageState extends State<LessonPlanViewPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SizedBox(
-                          width: 24,
-                          height: 24,
+                          width: 22,
+                          height: 22,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            color: AppColors.dashboardMutedColor(context),
+                            strokeWidth: 2.2,
+                            color: textSecondary,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         Text(
                           'Loading lesson plan...',
                           style: TextStyle(
                             color: textSecondary,
                             fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -817,134 +815,173 @@ class _LessonPlanViewPageState extends State<LessonPlanViewPage> {
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  final String label;
-  final String? fallback;
+// class _SmallMetaText extends StatelessWidget {
+//   final String label;
+//   final String value;
+//   final IconData icon;
 
-  const _InfoChip({
+//   const _SmallMetaText({
+//     required this.label,
+//     required this.value,
+//     required this.icon,
+//   });
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final textPrimary = AppColors.textPrimary(context);
+//     final textSecondary = AppColors.textSecondary(context);
+
+//     return Row(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         Padding(
+//           padding: const EdgeInsets.only(top: 1),
+//           child: Icon(
+//             icon,
+//             size: 14,
+//             color: AppColors.primary.withOpacity(.85),
+//           ),
+//         ),
+//         const SizedBox(width: 6),
+//         Expanded(
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               Text(
+//                 label,
+//                 style: TextStyle(
+//                   color: textSecondary,
+//                   fontSize: 11.5,
+//                   fontWeight: FontWeight.w500,
+//                 ),
+//                 textAlign: TextAlign.left,
+//               ),
+//               const SizedBox(height: 1),
+//               Text(
+//                 value.trim().isNotEmpty ? value : '—',
+//                 style: TextStyle(
+//                   color: textPrimary,
+//                   fontSize: 12.5,
+//                   fontWeight: FontWeight.w600,
+//                 ),
+//                 textAlign: TextAlign.left,
+//               ),
+//             ],
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+// }
+
+class _InlineInfo extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InlineInfo({
     required this.label,
-    this.fallback,
+    required this.value,
   });
 
   @override
   Widget build(BuildContext context) {
-    final value = label.trim().isNotEmpty ? label.trim() : fallback?.trim() ?? '';
-    if (value.isEmpty) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.surface3(context),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.borderSoft(context)),
-      ),
-      child: Text(
-        value,
-        style: TextStyle(
-          color: AppColors.textPrimary(context),
-          fontSize: 11.5,
-          fontWeight: FontWeight.w700,
+    if (value.trim().isEmpty) return const SizedBox.shrink();
+
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: RichText(
+        textAlign: TextAlign.left,
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                height: 1.45,
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                height: 1.45,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isLast;
-
-  const _InfoRow({
-    required this.label,
-    required this.value,
-    this.isLast = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textPrimary = AppColors.textPrimary(context);
-    final textSecondary = AppColors.textSecondary(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : Border(
-                bottom: BorderSide(color: AppColors.borderSoft(context)),
-              ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 118,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value.trim().isNotEmpty ? value : '—',
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                height: 1.35,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LessonMiniSection extends StatelessWidget {
+class _TextSection extends StatelessWidget {
   final String title;
   final String content;
+  final IconData icon;
 
-  const _LessonMiniSection({
+  const _TextSection({
     required this.title,
     required this.content,
+    required this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     if (content.trim().isEmpty) return const SizedBox.shrink();
-    final borderColor = AppColors.borderSoft(context);
-    final surfaceColor = AppColors.surface3(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
-      ),
+
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: AppColors.textPrimary(context),
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 1),
+                child: Icon(
+                  icon,
+                  size: 14,
+                  color: AppColors.primary.withOpacity(.85),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.left,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            content,
-            style: TextStyle(
-              color: AppColors.textSecondary(context),
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              height: 1.5,
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 20),
+            child: Text(
+              content,
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                height: 1.55,
+              ),
+              textAlign: TextAlign.left,
             ),
           ),
         ],

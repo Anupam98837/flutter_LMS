@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:hallienzlms/config/appConfig.dart';
 import 'package:hallienzlms/screens/modules/syllabus/lesson_plan_view_page.dart';
@@ -205,6 +206,17 @@ class _MySyllabusPageState extends State<MySyllabusPage> {
         syllabusCode: _stringValue(row['syllabus_code']).isNotEmpty
             ? _stringValue(row['syllabus_code'])
             : _stringValue(meta['syllabus_code']),
+        publicUuid: _stringValue(row['public_uuid']).isNotEmpty
+            ? _stringValue(row['public_uuid'])
+            : _stringValue(meta['public_uuid']).isNotEmpty
+                ? _stringValue(meta['public_uuid'])
+                : _stringValue(row['uuid']).isNotEmpty
+                    ? _stringValue(row['uuid'])
+                    : _stringValue(meta['uuid']).isNotEmpty
+                        ? _stringValue(meta['uuid'])
+                        : subjects.isNotEmpty
+                            ? subjects.first.uuid
+                            : '',
         creditPattern: _stringValue(meta['credit_pattern']),
         prerequisites: _plainText(meta['prerequisites_html']),
         generalInstructions: _plainText(meta['general_instructions_html']),
@@ -251,6 +263,17 @@ class _MySyllabusPageState extends State<MySyllabusPage> {
           syllabusCode: _stringValue(summary['syllabus_code']).isNotEmpty
               ? _stringValue(summary['syllabus_code'])
               : _stringValue(meta['syllabus_code']),
+          publicUuid: _stringValue(root['public_uuid']).isNotEmpty
+              ? _stringValue(root['public_uuid'])
+              : _stringValue(meta['public_uuid']).isNotEmpty
+                  ? _stringValue(meta['public_uuid'])
+                  : _stringValue(root['uuid']).isNotEmpty
+                      ? _stringValue(root['uuid'])
+                      : _stringValue(meta['uuid']).isNotEmpty
+                          ? _stringValue(meta['uuid'])
+                          : subjects.isNotEmpty
+                              ? subjects.first.uuid
+                              : '',
           creditPattern: _stringValue(meta['credit_pattern']),
           prerequisites: _plainText(meta['prerequisites_html']),
           generalInstructions: _plainText(meta['general_instructions_html']),
@@ -534,14 +557,10 @@ class _MySyllabusPageState extends State<MySyllabusPage> {
                         ),
                       ),
                       TextButton.icon(
-                        onPressed: () => _showOverlayNotice(
-                          previewContext,
-                          title: 'Download',
-                          message:
-                              'The semester PDF export flow is ready here. The final file download hook will be connected next.',
-                        ),
-                        icon: const Icon(Icons.download_rounded, size: 16),
-                        label: const Text('Download'),
+                        onPressed: () =>
+                            _openPublicSyllabusPage(previewContext, semester),
+                        icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                        label: const Text('Syllabus'),
                       ),
                     ],
                   ),
@@ -628,6 +647,44 @@ class _MySyllabusPageState extends State<MySyllabusPage> {
     );
   }
 
+  Future<void> _openPublicSyllabusPage(
+    BuildContext overlayContext,
+    _SyllabusSemester semester,
+  ) async {
+    if (semester.publicUuid.isEmpty) {
+      await _showOverlayNotice(
+        overlayContext,
+        title: 'Syllabus',
+        message: 'Public syllabus link is not available for this semester.',
+      );
+      return;
+    }
+
+    if (Navigator.of(overlayContext).canPop()) {
+      Navigator.of(overlayContext).pop();
+    }
+
+    final uri = Uri.parse(
+      '${AppConfig.baseUrl}/syllabus/public/${Uri.encodeComponent(semester.publicUuid)}',
+    );
+
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        throw const HttpException('Unable to open syllabus page');
+      }
+    } catch (_) {
+      await _showOverlayNotice(
+        overlayContext,
+        title: 'Syllabus',
+        message: 'We could not open the syllabus page right now.',
+      );
+    }
+  }
+
   void _openSemesterSheet(_SyllabusSemester semester) {
     final surfaceColor = AppColors.surface(context);
     final softFill = AppColors.surface3(context);
@@ -694,8 +751,8 @@ class _MySyllabusPageState extends State<MySyllabusPage> {
                       ),
                       OutlinedButton.icon(
                         onPressed: () =>
-                            _downloadSemesterSyllabus(sheetContext, semester),
-                        icon: const Icon(Icons.download_rounded, size: 16),
+                            _openPublicSyllabusPage(sheetContext, semester),
+                        icon: const Icon(Icons.menu_book_rounded, size: 16),
                         label: const Text('Syllabus'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: textPrimary,
@@ -730,7 +787,7 @@ class _MySyllabusPageState extends State<MySyllabusPage> {
                   ],
                   const SizedBox(height: 14),
                   Divider(color: borderColor, height: 1),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 6),
                   Text(
                     'Subjects',
                     style: TextStyle(
@@ -780,33 +837,48 @@ class _MySyllabusPageState extends State<MySyllabusPage> {
 
   Widget _buildHeader() {
     final textPrimary = AppColors.textPrimary(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    final textSecondary = AppColors.textSecondary(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: AppColors.primarySoft,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: AppColors.primary.withOpacity(0.16),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.16),
+                ),
+              ),
+              child: const Icon(
+                Icons.menu_book_rounded,
+                size: 16,
+                color: AppColors.primary,
+              ),
             ),
-          ),
-          child: const Icon(
-            Icons.menu_book_rounded,
-            size: 16,
-            color: AppColors.primary,
-          ),
+            const SizedBox(width: 10),
+            Text(
+              'My Syllabus',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 15.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 10),
+        const SizedBox(height: 2),
         Text(
-          'My Syllabus',
+          'View your syllabus and lesson plan here',
           style: TextStyle(
-            color: textPrimary,
-            fontSize: 15.5,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.2,
+            color: textSecondary,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -943,7 +1015,7 @@ class _MySyllabusPageState extends State<MySyllabusPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeader(),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 2),
                   if (_loading)
                     _buildLoadingState()
                   else if (_semesters.isEmpty)
@@ -1121,6 +1193,7 @@ class _SubjectRow extends StatelessWidget {
 class _SyllabusSemester {
   final int semester;
   final String? _downloadId;
+  final String? _publicUuid;
   final String? _courseTitle;
   final String? _courseCode;
   final String? _institutionName;
@@ -1139,6 +1212,7 @@ class _SyllabusSemester {
   const _SyllabusSemester({
     required this.semester,
     String? downloadId,
+    String? publicUuid,
     String? courseTitle,
     String? courseCode,
     String? institutionName,
@@ -1154,6 +1228,7 @@ class _SyllabusSemester {
     String? onlineResources,
     List<_SyllabusSubject>? subjects,
   })  : _downloadId = downloadId,
+        _publicUuid = publicUuid,
         _courseTitle = courseTitle,
         _courseCode = courseCode,
         _institutionName = institutionName,
@@ -1170,6 +1245,7 @@ class _SyllabusSemester {
         _subjects = subjects;
 
   String get downloadId => _downloadId ?? '';
+  String get publicUuid => _publicUuid ?? '';
   String get courseTitle => _courseTitle ?? '';
   String get courseCode => _courseCode ?? '';
   String get institutionName => _institutionName ?? '';
