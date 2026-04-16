@@ -232,7 +232,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: error ? AppColors.dangerStrong : AppColors.primary,
+          backgroundColor: error ? AppColors.dangerStrong : AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
       );

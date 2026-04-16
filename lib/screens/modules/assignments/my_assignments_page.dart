@@ -273,10 +273,14 @@ class _MyAssignmentsPageState extends State<MyAssignmentsPage> {
       }
 
       final extracted = _extractAssignments(payload);
+      final hydratedSemesters = await _hydrateAssignmentsWithSubmissions(
+        extracted.semesters,
+        token,
+      );
       if (!mounted) return;
 
       setState(() {
-        _semesters = extracted.semesters;
+        _semesters = hydratedSemesters;
         _currentSemester = extracted.currentSemester;
         _loading = false;
       });
@@ -457,6 +461,30 @@ class _MyAssignmentsPageState extends State<MyAssignmentsPage> {
         errorMessage: error.toString().replaceFirst('Exception: ', ''),
       );
     }
+  }
+
+  Future<List<_AssignmentSemester>> _hydrateAssignmentsWithSubmissions(
+    List<_AssignmentSemester> semesters,
+    String token,
+  ) async {
+    final hydrated = <_AssignmentSemester>[];
+
+    for (final semester in semesters) {
+      final assignments = <_StudentAssignment>[];
+
+      for (final assignment in semester.assignments) {
+        try {
+          final submissions = await _fetchMySubmissions(assignment.id, token);
+          assignments.add(assignment.copyWith(mySubmissions: submissions));
+        } catch (_) {
+          assignments.add(assignment);
+        }
+      }
+
+      hydrated.add(semester.copyWith(assignments: assignments));
+    }
+
+    return hydrated;
   }
 
   Future<void> _submitAssignment({
@@ -1941,6 +1969,29 @@ class _StudentAssignment {
     required this.semesterLabel,
     required this.mySubmissions,
   });
+
+  _StudentAssignment copyWith({
+    List<_AssignmentSubmission>? mySubmissions,
+  }) {
+    return _StudentAssignment(
+      id: id,
+      uuid: uuid,
+      title: title,
+      description: description,
+      subjectName: subjectName,
+      subjectCode: subjectCode,
+      subjectKey: subjectKey,
+      assignedByName: assignedByName,
+      assignedByImage: assignedByImage,
+      dueAt: dueAt,
+      createdAt: createdAt,
+      attemptsAllowed: attemptsAllowed,
+      totalMarks: totalMarks,
+      semesterId: semesterId,
+      semesterLabel: semesterLabel,
+      mySubmissions: mySubmissions ?? this.mySubmissions,
+    );
+  }
 
   String get subjectDisplay {
     if (subjectName.isEmpty) return subjectCode;

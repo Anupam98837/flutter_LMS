@@ -10,6 +10,7 @@ import 'package:hallienzlms/config/appConfig.dart';
 import 'package:hallienzlms/screens/common/dashboard/dashboard_page.dart';
 import 'package:hallienzlms/screens/common/profile/profile_page.dart';
 import 'package:hallienzlms/screens/modules/assignments/my_assignments_page.dart';
+import 'package:hallienzlms/screens/modules/exam/my_quizz_page.dart';
 import 'package:hallienzlms/screens/modules/notices/my_notices_page.dart';
 import 'package:hallienzlms/screens/modules/study_materials/my_study_materials_page.dart';
 import 'package:hallienzlms/screens/modules/syllabus/my_syllabus_page.dart';
@@ -338,6 +339,15 @@ class _StructurePageState extends State<StructurePage> {
                             ? const MyNoticesPage()
                         : _currentIndex == 3
                             ? const MyAssignmentsPage()
+                        : _currentIndex == 4
+                            ? MyQuizzPage(
+                                onBackToDashboard: () {
+                                  if (!mounted) return;
+                                  setState(() {
+                                    _currentIndex = 0;
+                                  });
+                                },
+                              )
                         : _currentIndex == 5
                             ? const MySyllabusPage()
                         : ComingSoonPage(

@@ -353,6 +353,7 @@ class _LoginPageState extends State<LoginPage> {
       final result = await _postJson(
         '${AppConfig.baseUrl}/api/auth/login',
         {
+          'login': _identifierController.text.trim(),
           'email': _identifierController.text.trim(),
           'password': _passwordController.text,
           'remember': _keepLoggedIn,

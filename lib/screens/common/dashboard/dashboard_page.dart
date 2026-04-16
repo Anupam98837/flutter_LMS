@@ -33,52 +33,66 @@ class StudentDashboardPage extends StatelessWidget {
     final panelStart = AppColors.dashboardPanelFrom(context);
     final panelMid = AppColors.dashboardPanelVia(context);
     final panelEnd = AppColors.dashboardPanelTo(context);
+    final backgroundColor = AppColors.background(context);
     return SafeArea(
       top: false,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _DashboardHeroCard(userName: userName),
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(10, 14, 10, 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [panelStart, panelMid, panelEnd],
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              panelStart.withOpacity(0.9),
+              panelMid.withOpacity(0.65),
+              backgroundColor,
+            ],
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _DashboardHeroCard(userName: userName),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(10, 14, 10, 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [panelStart, panelMid, panelEnd],
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: shortcuts.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 4,
+                        mainAxisSpacing: 16,
+                        crossAxisSpacing: 10,
+                        childAspectRatio: 0.82,
+                      ),
+                      itemBuilder: (context, index) {
+                        final shortcut = shortcuts[index];
+                        return _DashboardShortcutTile(
+                          shortcut: shortcut,
+                          onTap: () => onShortcutTap(shortcut),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 6),
+                  ],
                 ),
               ),
-              child: Column(
-                children: [
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: shortcuts.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: 0.82,
-                    ),
-                    itemBuilder: (context, index) {
-                      final shortcut = shortcuts[index];
-                      return _DashboardShortcutTile(
-                        shortcut: shortcut,
-                        onTap: () => onShortcutTap(shortcut),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 6),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -177,6 +191,7 @@ class _DashboardShortcutTile extends StatelessWidget {
     final surfaceColor = AppColors.surface(context);
     final borderColor = AppColors.borderSoft(context);
     final inkColor = AppColors.ink(context);
+    final isDark = AppColors.isDark(context);
     final textColor = AppColors.isDark(context)
         ? AppColors.textPrimary(context)
         : AppColors.dashboardText;
@@ -192,7 +207,14 @@ class _DashboardShortcutTile extends StatelessWidget {
                 width: iconBoxSize,
                 height: iconBoxSize,
                 decoration: BoxDecoration(
-                  color: surfaceColor,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      surfaceColor,
+                      shortcut.color.withOpacity(isDark ? 0.22 : 0.16),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
