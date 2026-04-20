@@ -1,4 +1,4 @@
-# hallienz_lms
+# msit_lms
 
 A new Flutter project.
 

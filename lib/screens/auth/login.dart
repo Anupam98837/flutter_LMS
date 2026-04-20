@@ -10,9 +10,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:hallienzlms/config/appConfig.dart';
-import 'package:hallienzlms/screens/structure.dart';
-import 'package:hallienzlms/theme/app_colors.dart';
+import 'package:msitlms/config/appConfig.dart';
+import 'package:msitlms/screens/structure.dart';
+import 'package:msitlms/theme/app_colors.dart';
 
 class LoginPage extends StatefulWidget {
   final String? initialIdentifier;
@@ -153,7 +153,7 @@ class _LoginPageState extends State<LoginPage> {
               HttpHeaders.acceptHeader: 'application/json',
               HttpHeaders.contentTypeHeader: 'application/json',
               HttpHeaders.userAgentHeader:
-                  'HallienzLMS/1.0 (Flutter iOS/Android)',
+                  'MSITLMS/1.0 (Flutter iOS/Android)',
             },
             body: jsonEncode(payload),
           )
@@ -178,7 +178,7 @@ class _LoginPageState extends State<LoginPage> {
             headers: {
               HttpHeaders.acceptHeader: 'application/json',
               HttpHeaders.userAgentHeader:
-                  'HallienzLMS/1.0 (Flutter iOS/Android)',
+                  'MSITLMS/1.0 (Flutter iOS/Android)',
               ...?headers,
             },
           )
@@ -787,7 +787,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 10),
         Text(
-          'Hallienz LMS',
+          'MSIT LMS',
           style: TextStyle(
             color: textSecondary.withOpacity(0.82),
             fontSize: 15,

@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:hallienzlms/config/appConfig.dart';
-import 'package:hallienzlms/screens/auth/login.dart';
-import 'package:hallienzlms/theme/app_colors.dart';
+import 'package:msitlms/config/appConfig.dart';
+import 'package:msitlms/screens/auth/login.dart';
+import 'package:msitlms/theme/app_colors.dart';
 
 class ProfilePageResult {
   final String? name;
@@ -485,7 +485,7 @@ class _ProfilePageState extends State<ProfilePage> {
               borderRadius: BorderRadius.circular(18),
             ),
             title: const Text('Log Out'),
-            content: const Text('You will be signed out of Hallienz LMS.'),
+            content: const Text('You will be signed out of MSIT LMS.'),
             actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             actionsAlignment: MainAxisAlignment.end,
             actions: [

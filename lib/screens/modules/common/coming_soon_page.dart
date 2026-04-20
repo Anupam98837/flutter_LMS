@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:hallienzlms/theme/app_colors.dart';
+import 'package:msitlms/theme/app_colors.dart';
 
 class ComingSoonPage extends StatelessWidget {
   final String title;

@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:hallienzlms/config/appConfig.dart';
-import 'package:hallienzlms/theme/app_colors.dart';
+import 'package:msitlms/config/appConfig.dart';
+import 'package:msitlms/theme/app_colors.dart';
 
 class MyStudyMaterialsPage extends StatefulWidget {
   const MyStudyMaterialsPage({super.key});
@@ -78,7 +78,7 @@ class _MyStudyMaterialsPageState extends State<MyStudyMaterialsPage> {
         headers: {
           HttpHeaders.acceptHeader: 'application/json',
           HttpHeaders.authorizationHeader: 'Bearer $token',
-          HttpHeaders.userAgentHeader: 'HallienzLMS/1.0 (Flutter iOS/Android)',
+          HttpHeaders.userAgentHeader: 'MSITLMS/1.0 (Flutter iOS/Android)',
         },
       );
 

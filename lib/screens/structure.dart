@@ -6,16 +6,16 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:hallienzlms/config/appConfig.dart';
-import 'package:hallienzlms/screens/common/dashboard/dashboard_page.dart';
-import 'package:hallienzlms/screens/common/profile/profile_page.dart';
-import 'package:hallienzlms/screens/modules/assignments/my_assignments_page.dart';
-import 'package:hallienzlms/screens/modules/exam/my_quizz_page.dart';
-import 'package:hallienzlms/screens/modules/notices/my_notices_page.dart';
-import 'package:hallienzlms/screens/modules/study_materials/my_study_materials_page.dart';
-import 'package:hallienzlms/screens/modules/syllabus/my_syllabus_page.dart';
-import 'package:hallienzlms/screens/widgets/coming_soon_page.dart';
-import 'package:hallienzlms/theme/app_colors.dart';
+import 'package:msitlms/config/appConfig.dart';
+import 'package:msitlms/screens/common/dashboard/dashboard_page.dart';
+import 'package:msitlms/screens/common/profile/profile_page.dart';
+import 'package:msitlms/screens/modules/assignments/my_assignments_page.dart';
+import 'package:msitlms/screens/modules/exam/my_quizz_page.dart';
+import 'package:msitlms/screens/modules/notices/my_notices_page.dart';
+import 'package:msitlms/screens/modules/study_materials/my_study_materials_page.dart';
+import 'package:msitlms/screens/modules/syllabus/my_syllabus_page.dart';
+import 'package:msitlms/screens/widgets/coming_soon_page.dart';
+import 'package:msitlms/theme/app_colors.dart';
 
 class StructurePage extends StatefulWidget {
   final String? userName;
@@ -160,7 +160,7 @@ class _StructurePageState extends State<StructurePage> {
             headers: {
               HttpHeaders.acceptHeader: 'application/json',
               HttpHeaders.userAgentHeader:
-                  'HallienzLMS/1.0 (Flutter iOS/Android)',
+                  'MSITLMS/1.0 (Flutter iOS/Android)',
               ...?headers,
             },
           )

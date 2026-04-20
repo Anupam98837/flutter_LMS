@@ -1,11 +1,11 @@
 {
-    "name": "Hallienz LMS",
-    "short_name": "Hallienz LMS",
+    "name": "MSIT LMS",
+    "short_name": "MSIT LMS",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Hallienz LMS",
+    "description": "MSIT LMS",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

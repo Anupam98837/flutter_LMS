@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:hallienzlms/config/appConfig.dart';
-import 'package:hallienzlms/theme/app_colors.dart';
+import 'package:msitlms/config/appConfig.dart';
+import 'package:msitlms/theme/app_colors.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -82,7 +82,7 @@ class _MyNoticesPageState extends State<MyNoticesPage> {
         headers: {
           HttpHeaders.acceptHeader: 'application/json',
           HttpHeaders.authorizationHeader: 'Bearer $token',
-          HttpHeaders.userAgentHeader: 'HallienzLMS/1.0 (Flutter iOS/Android)',
+          HttpHeaders.userAgentHeader: 'MSITLMS/1.0 (Flutter iOS/Android)',
         },
       );
 

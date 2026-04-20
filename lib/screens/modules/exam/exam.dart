@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:hallienzlms/config/appConfig.dart';
-import 'package:hallienzlms/screens/structure.dart';
-import 'package:hallienzlms/theme/app_colors.dart';
+import 'package:msitlms/config/appConfig.dart';
+import 'package:msitlms/screens/structure.dart';
+import 'package:msitlms/theme/app_colors.dart';
 
 class ExamPage extends StatefulWidget {
   final String quizKey;
