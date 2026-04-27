@@ -12,7 +12,7 @@ class AppTheme {
       EdgeInsets.symmetric(horizontal: 16, vertical: 16);
 
   static const EdgeInsets _buttonPadding =
-      EdgeInsets.symmetric(horizontal: 18, vertical: 14);
+      EdgeInsets.symmetric(horizontal: 18, vertical: 0);
 
   static final _lightInputBorder = OutlineInputBorder(
     borderRadius: BorderRadius.circular(_fieldRadius),
@@ -139,8 +139,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         disabledBackgroundColor: AppColors.lightBorderMedium,
         disabledForegroundColor: Colors.white70,
-        minimumSize: const Size(0, 42),
-        maximumSize: const Size(double.infinity, 42),
+        minimumSize: const Size(0, 44),
         padding: _buttonPadding,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shadowColor: AppColors.primary.withOpacity(0.18),
@@ -148,8 +147,9 @@ class AppTheme {
           borderRadius: BorderRadius.circular(_buttonRadius),
         ),
         textStyle: const TextStyle(
-          fontSize: 17,
+          fontSize: 15.5,
           fontWeight: FontWeight.w700,
+          height: 1.1,
         ),
       ),
     ),
@@ -159,8 +159,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         disabledBackgroundColor: AppColors.lightBorderMedium,
         disabledForegroundColor: Colors.white70,
-        minimumSize: const Size(0, 42),
-        maximumSize: const Size(double.infinity, 42),
+        minimumSize: const Size(0, 44),
         padding: _buttonPadding,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shadowColor: AppColors.secondary.withOpacity(0.18),
@@ -168,8 +167,9 @@ class AppTheme {
           borderRadius: BorderRadius.circular(_buttonRadius),
         ),
         textStyle: const TextStyle(
-          fontSize: 17,
+          fontSize: 15.5,
           fontWeight: FontWeight.w700,
+          height: 1.1,
         ),
       ),
     ),
@@ -177,8 +177,7 @@ class AppTheme {
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.primary,
         disabledForegroundColor: AppColors.lightTextSecondary,
-        minimumSize: const Size(0, 42),
-        maximumSize: const Size(double.infinity, 42),
+        minimumSize: const Size(0, 44),
         padding: _buttonPadding,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         side: const BorderSide(color: AppColors.lightBorderStrong, width: 1),
@@ -186,24 +185,25 @@ class AppTheme {
           borderRadius: BorderRadius.circular(_buttonRadius),
         ),
         textStyle: const TextStyle(
-          fontSize: 17,
+          fontSize: 15.5,
           fontWeight: FontWeight.w700,
+          height: 1.1,
         ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: AppColors.secondary,
-        minimumSize: const Size(0, 36),
-        maximumSize: const Size(double.infinity, 36),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        minimumSize: const Size(0, 38),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_buttonRadius),
         ),
         textStyle: const TextStyle(
-          fontSize: 15,
+          fontSize: 13.5,
           fontWeight: FontWeight.w700,
+          height: 1.1,
         ),
       ),
     ),
@@ -321,16 +321,16 @@ class AppTheme {
         foregroundColor: Colors.white,
         disabledBackgroundColor: AppColors.darkBorderMedium,
         disabledForegroundColor: Colors.white70,
-        minimumSize: const Size(0, 42),
-        maximumSize: const Size(double.infinity, 42),
+        minimumSize: const Size(0, 44),
         padding: _buttonPadding,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_buttonRadius),
         ),
         textStyle: const TextStyle(
-          fontSize: 17,
+          fontSize: 15.5,
           fontWeight: FontWeight.w700,
+          height: 1.1,
         ),
       ),
     ),
@@ -340,16 +340,16 @@ class AppTheme {
         foregroundColor: Colors.white,
         disabledBackgroundColor: AppColors.darkBorderMedium,
         disabledForegroundColor: Colors.white70,
-        minimumSize: const Size(0, 42),
-        maximumSize: const Size(double.infinity, 42),
+        minimumSize: const Size(0, 44),
         padding: _buttonPadding,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_buttonRadius),
         ),
         textStyle: const TextStyle(
-          fontSize: 17,
+          fontSize: 15.5,
           fontWeight: FontWeight.w700,
+          height: 1.1,
         ),
       ),
     ),
@@ -357,8 +357,7 @@ class AppTheme {
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.darkTextPrimary,
         disabledForegroundColor: AppColors.darkTextSecondary,
-        minimumSize: const Size(0, 42),
-        maximumSize: const Size(double.infinity, 42),
+        minimumSize: const Size(0, 44),
         padding: _buttonPadding,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         side: const BorderSide(color: AppColors.darkBorderStrong, width: 1),
@@ -366,24 +365,25 @@ class AppTheme {
           borderRadius: BorderRadius.circular(_buttonRadius),
         ),
         textStyle: const TextStyle(
-          fontSize: 17,
+          fontSize: 15.5,
           fontWeight: FontWeight.w700,
+          height: 1.1,
         ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: AppColors.accent,
-        minimumSize: const Size(0, 36),
-        maximumSize: const Size(double.infinity, 36),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        minimumSize: const Size(0, 38),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_buttonRadius),
         ),
         textStyle: const TextStyle(
-          fontSize: 15,
+          fontSize: 13.5,
           fontWeight: FontWeight.w700,
+          height: 1.1,
         ),
       ),
     ),

@@ -12,6 +12,7 @@ import 'package:msitlms/screens/common/profile/profile_page.dart';
 import 'package:msitlms/screens/modules/assignments/my_assignments_page.dart';
 import 'package:msitlms/screens/modules/exam/my_quizz_page.dart';
 import 'package:msitlms/screens/modules/notices/my_notices_page.dart';
+import 'package:msitlms/screens/modules/results/my_results_page.dart';
 import 'package:msitlms/screens/modules/study_materials/my_study_materials_page.dart';
 import 'package:msitlms/screens/modules/syllabus/my_syllabus_page.dart';
 import 'package:msitlms/screens/widgets/coming_soon_page.dart';
@@ -288,8 +289,19 @@ class _StructurePageState extends State<StructurePage> {
       return;
     }
 
-    if (label == 'Quizzes' || label == 'Result') {
+    if (label == 'Quizzes') {
       _handleBottomNavTap(4);
+      return;
+    }
+
+    if (label == 'Result') {
+      unawaited(
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const MyResultsPage(),
+          ),
+        ),
+      );
       return;
     }
 

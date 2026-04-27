@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:msitlms/app/app_keys.dart';
 import 'package:msitlms/config/appConfig.dart';
 import 'package:msitlms/screens/auth/login.dart';
 import 'package:msitlms/theme/app_colors.dart';
@@ -39,7 +40,6 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _whatsAppController = TextEditingController();
   final _altEmailController = TextEditingController();
@@ -84,7 +84,6 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
     _phoneController.dispose();
     _whatsAppController.dispose();
     _altEmailController.dispose();
@@ -216,7 +215,6 @@ class _ProfilePageState extends State<ProfilePage> {
     _avatarText = user['avatar_text']?.toString();
 
     _nameController.text = user['name']?.toString() ?? '';
-    _emailController.text = user['email']?.toString() ?? '';
     _phoneController.text = user['phone_number']?.toString() ?? '';
     _whatsAppController.text = user['whatsapp_number']?.toString() ?? '';
     _altEmailController.text = user['alternative_email']?.toString() ?? '';
@@ -226,8 +224,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showSnack(String message, {bool error = false}) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
+    final messenger = appScaffoldMessengerKey.currentState;
+    if (messenger == null) return;
+    messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
@@ -324,18 +323,13 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _saveBasicDetails() async {
-    FocusScope.of(context).unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
 
     final name = _nameController.text.trim();
-    final email = _emailController.text.trim();
     final altEmail = _altEmailController.text.trim();
 
     if (name.isEmpty) {
       _showSnack('Name is required.', error: true);
-      return;
-    }
-    if (email.isEmpty) {
-      _showSnack('Email is required.', error: true);
       return;
     }
     if (altEmail.isNotEmpty && !altEmail.contains('@')) {
@@ -361,7 +355,6 @@ class _ProfilePageState extends State<ProfilePage> {
         },
         body: jsonEncode({
           'name': name,
-          'email': email,
           'phone_number': _phoneController.text.trim(),
           'whatsapp_number': _whatsAppController.text.trim(),
           'alternative_email': altEmail,
@@ -386,7 +379,6 @@ class _ProfilePageState extends State<ProfilePage> {
               : {
                   ...?_profileCache,
                   'name': name,
-                  'email': email,
                   'phone_number': _phoneController.text.trim(),
                   'whatsapp_number': _whatsAppController.text.trim(),
                   'alternative_email': altEmail,
@@ -412,7 +404,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _updatePassword() async {
-    FocusScope.of(context).unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
 
     final currentPassword = _currentPasswordController.text;
     final newPassword = _newPasswordController.text;
@@ -463,6 +455,7 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       }
 
+      if (!mounted) return;
       _resetPasswordFields();
       _showSnack(
         _messageFromPayload(payload, fallback: 'Password updated successfully.'),
@@ -978,13 +971,6 @@ class _ProfilePageState extends State<ProfilePage> {
             controller: _nameController,
             label: 'Full Name',
             hint: 'Your full name',
-          ),
-          const SizedBox(height: 14),
-          _buildTextField(
-            controller: _emailController,
-            label: 'Email',
-            hint: 'you@example.com',
-            keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: 14),
           _buildTextField(

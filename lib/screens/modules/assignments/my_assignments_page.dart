@@ -1052,6 +1052,7 @@ class _AssignmentCard extends StatelessWidget {
     final textSecondary = AppColors.textSecondary(context);
     final inkColor = AppColors.ink(context);
     final submissionCount = assignment.submissionCount;
+    final hasRemainingAttempts = assignment.remainingAttempts > 0;
 
     return Material(
       color: Colors.transparent,
@@ -1104,33 +1105,90 @@ class _AssignmentCard extends StatelessWidget {
               ),
               if (assignment.subjectDisplay.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(
-                  assignment.subjectDisplay,
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: 12.2,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        assignment.subjectDisplay,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textSecondary,
+                          fontSize: 12.2,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: (hasRemainingAttempts
+                                ? const Color(0xFF16A34A)
+                                : const Color(0xFFDC2626))
+                            .withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: (hasRemainingAttempts
+                                  ? const Color(0xFF16A34A)
+                                  : const Color(0xFFDC2626))
+                              .withOpacity(0.24),
+                        ),
+                      ),
+                      child: Text(
+                        '${assignment.usedAttempts}/${assignment.attemptsAllowed}',
+                        style: TextStyle(
+                          color: hasRemainingAttempts
+                              ? const Color(0xFF15803D)
+                              : const Color(0xFFB91C1C),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
               const SizedBox(height: 10),
               Row(
                 children: [
-                  _AssignmentAvatar(
-                    name: assignment.assignedByName,
-                    imageUrl: assignment.assignedByImageSafe,
-                    size: 30,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        _AssignmentAvatar(
+                          name: assignment.assignedByName,
+                          imageUrl: assignment.assignedByImageSafe,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            assignment.assignedByName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 12.6,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(
+                  Flexible(
                     child: Text(
-                      assignment.assignedByName,
+                      dueDateLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 12.8,
-                        fontWeight: FontWeight.w800,
+                        color: textSecondary,
+                        fontSize: 11.8,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -1150,15 +1208,6 @@ class _AssignmentCard extends StatelessWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: 10),
-              Text(
-                '${assignment.usedAttempts}/${assignment.attemptsAllowed} attempts${assignment.marksLabel.isNotEmpty ? ' • ${assignment.marksLabel}' : ''}',
-                style: TextStyle(
-                  color: textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
               const SizedBox(height: 14),
               Divider(
                 height: 1,
@@ -1169,27 +1218,15 @@ class _AssignmentCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today_outlined,
-                          size: 14,
-                          color: textSecondary,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            dueDateLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: textSecondary,
-                              fontSize: 11.8,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      assignment.marksLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontSize: 11.8,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1432,6 +1469,27 @@ class _AssignmentDetailSheetState extends State<_AssignmentDetailSheet> {
     return '$display ${units[index]}';
   }
 
+  Color _attemptColor(bool hasRemaining) {
+    return hasRemaining ? const Color(0xFF16A34A) : const Color(0xFFDC2626);
+  }
+
+  Widget _buildSectionCard({
+    required BuildContext context,
+    required Widget child,
+    EdgeInsets padding = const EdgeInsets.fromLTRB(14, 14, 14, 14),
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: AppColors.surface3(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSoft(context)),
+      ),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final assignment = widget.assignment;
@@ -1468,31 +1526,6 @@ class _AssignmentDetailSheetState extends State<_AssignmentDetailSheet> {
                   height: 1.25,
                 ),
               ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (assignment.subjectDisplay.isNotEmpty)
-                    _AssignmentMetaChip(
-                      icon: Icons.menu_book_outlined,
-                      label: assignment.subjectDisplay,
-                    ),
-                  _AssignmentMetaChip(
-                    icon: Icons.calendar_today_outlined,
-                    label: _formatSheetDate(
-                      assignment.dueAt.isNotEmpty
-                          ? assignment.dueAt
-                          : assignment.createdAt,
-                    ),
-                  ),
-                  if (assignment.semesterLabel.isNotEmpty)
-                    _AssignmentMetaChip(
-                      icon: Icons.school_outlined,
-                      label: assignment.semesterLabel,
-                    ),
-                ],
-              ),
               const SizedBox(height: 16),
               Expanded(
                 child: FutureBuilder<_AssignmentSheetState>(
@@ -1506,48 +1539,112 @@ class _AssignmentDetailSheetState extends State<_AssignmentDetailSheet> {
 
                     final sheetState = snapshot.data!;
                     final remainingAttempts = sheetState.remainingAttempts;
+                    final hasRemainingAttempts = remainingAttempts > 0;
+                    final attemptColor = _attemptColor(hasRemainingAttempts);
 
                     return SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface3(context),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: borderColor),
-                            ),
-                            child: Row(
+                          _buildSectionCard(
+                            context: context,
+                            child: Column(
                               children: [
-                                _AssignmentAvatar(
-                                  name: assignment.assignedByName,
-                                  imageUrl: assignment.assignedByImageSafe,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    assignment.assignedByName,
-                                    style: TextStyle(
-                                      color: textPrimary,
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w800,
+                                Row(
+                                  children: [
+                                    if (assignment.subjectDisplay.isNotEmpty)
+                                      Expanded(
+                                        child: Text(
+                                          assignment.subjectDisplay,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: textPrimary,
+                                            fontSize: 12.8,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    if (assignment.subjectDisplay.isNotEmpty)
+                                      const SizedBox(width: 10),
+                                    Flexible(
+                                      child: Text(
+                                        assignment.semesterLabel.isNotEmpty
+                                            ? '${assignment.semesterLabel} • ${_formatSheetDate(
+                                                assignment.dueAt.isNotEmpty
+                                                    ? assignment.dueAt
+                                                    : assignment.createdAt,
+                                              )}'
+                                            : _formatSheetDate(
+                                                assignment.dueAt.isNotEmpty
+                                                    ? assignment.dueAt
+                                                    : assignment.createdAt,
+                                              ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(
+                                          color: textSecondary,
+                                          fontSize: 11.8,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    _AssignmentAvatar(
+                                      name: assignment.assignedByName,
+                                      imageUrl: assignment.assignedByImageSafe,
+                                      size: 30,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        assignment.assignedByName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: textPrimary,
+                                          fontSize: 12.8,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: attemptColor.withOpacity(0.10),
+                                        borderRadius: BorderRadius.circular(999),
+                                        border: Border.all(
+                                          color: attemptColor.withOpacity(0.24),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '${sheetState.usedAttempts}/${sheetState.attemptsAllowed}',
+                                        style: TextStyle(
+                                          color: hasRemainingAttempts
+                                              ? const Color(0xFF15803D)
+                                              : const Color(0xFFB91C1C),
+                                          fontSize: 11.8,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ),
                           const SizedBox(height: 16),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface3(context),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: borderColor),
-                            ),
+                          _buildSectionCard(
+                            context: context,
                             child: Text(
                               assignment.description.isNotEmpty
                                   ? assignment.description
@@ -1561,185 +1658,244 @@ class _AssignmentDetailSheetState extends State<_AssignmentDetailSheet> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surface3(context),
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(color: borderColor),
-                                  ),
-                                  child: Text(
-                                    '$remainingAttempts remaining out of ${sheetState.attemptsAllowed}',
-                                    style: TextStyle(
-                                      color: textPrimary,
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              if (sheetState.submissions.isNotEmpty &&
-                                  assignment.uuid.isNotEmpty) ...[
-                                const SizedBox(width: 10),
-                                TextButton.icon(
-                                  onPressed: widget.onOpenPrevious,
-                                  icon: const Icon(
-                                    Icons.open_in_new_rounded,
-                                    size: 16,
-                                  ),
-                                  label: const Text('Previous'),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: AppColors.primary,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          if (sheetState.errorMessage != null) ...[
-                            const SizedBox(height: 12),
-                            Text(
-                              sheetState.errorMessage!,
-                              style: TextStyle(
-                                color: textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                          if (remainingAttempts > 0) ...[
-                            const SizedBox(height: 18),
-                            TextField(
-                              controller: _linkController,
-                              keyboardType: TextInputType.url,
-                              decoration: InputDecoration(
-                                labelText: 'Submission Link',
-                                hintText: 'https://example.com/your-work',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                              decoration: BoxDecoration(
-                                color: AppColors.surface3(context),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: borderColor),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          _selectedFile == null
-                                              ? 'No file selected'
-                                              : _selectedFile!.name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: textPrimary,
-                                            fontSize: 12.8,
-                                            fontWeight: FontWeight.w700,
-                                          ),
+                          _buildSectionCard(
+                            context: context,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Submission',
+                                        style: TextStyle(
+                                          color: textPrimary,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
                                         ),
                                       ),
-                                      if (_selectedFile != null)
-                                        IconButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              _selectedFile = null;
-                                            });
-                                          },
-                                          icon: const Icon(
-                                            Icons.close_rounded,
-                                            size: 18,
-                                          ),
-                                          visualDensity: VisualDensity.compact,
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: attemptColor.withOpacity(0.10),
+                                        borderRadius: BorderRadius.circular(999),
+                                        border: Border.all(
+                                          color: attemptColor.withOpacity(0.24),
                                         ),
-                                    ],
-                                  ),
-                                  if (_selectedFile != null &&
-                                      _formatFileSize(_selectedFile!.size)
-                                          .isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _formatFileSize(_selectedFile!.size),
-                                      style: TextStyle(
-                                        color: textSecondary,
-                                        fontSize: 11.8,
-                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      child: Text(
+                                        hasRemainingAttempts
+                                            ? '$remainingAttempts left'
+                                            : 'No left',
+                                        style: TextStyle(
+                                          color: hasRemainingAttempts
+                                              ? const Color(0xFF15803D)
+                                              : const Color(0xFFB91C1C),
+                                          fontSize: 11.8,
+                                          fontWeight: FontWeight.w800,
+                                        ),
                                       ),
                                     ),
                                   ],
-                                  const SizedBox(height: 10),
-                                  OutlinedButton.icon(
-                                    onPressed: _pickFile,
-                                    icon: const Icon(
-                                      Icons.attach_file_rounded,
-                                      size: 16,
-                                    ),
-                                    label: Text(
-                                      _selectedFile == null
-                                          ? 'Select File'
-                                          : 'Change File',
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  hasRemainingAttempts
+                                      ? 'Attempt ${sheetState.usedAttempts}/${sheetState.attemptsAllowed}'
+                                      : 'No attempt remaining',
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: 12.8,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                if (sheetState.errorMessage != null) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    sheetState.errorMessage!,
+                                    style: TextStyle(
+                                      color: textSecondary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
-                              ),
+                                if (hasRemainingAttempts) ...[
+                                  const SizedBox(height: 14),
+                                  TextField(
+                                    controller: _linkController,
+                                    keyboardType: TextInputType.url,
+                                    decoration: InputDecoration(
+                                      labelText: 'Submission Link',
+                                      hintText: 'https://example.com/your-work',
+                                      isDense: true,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.fromLTRB(
+                                      12,
+                                      12,
+                                      12,
+                                      12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface(context),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: borderColor),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                _selectedFile == null
+                                                    ? 'No file selected'
+                                                    : _selectedFile!.name,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  color: textPrimary,
+                                                  fontSize: 12.6,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                            if (_selectedFile != null)
+                                              IconButton(
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _selectedFile = null;
+                                                  });
+                                                },
+                                                icon: const Icon(
+                                                  Icons.close_rounded,
+                                                  size: 18,
+                                                ),
+                                                visualDensity: VisualDensity.compact,
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(),
+                                              ),
+                                          ],
+                                        ),
+                                        if (_selectedFile != null &&
+                                            _formatFileSize(_selectedFile!.size)
+                                                .isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _formatFileSize(_selectedFile!.size),
+                                            style: TextStyle(
+                                              color: textSecondary,
+                                              fontSize: 11.6,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 10),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: OutlinedButton.icon(
+                                            onPressed: _pickFile,
+                                            icon: const Icon(
+                                              Icons.attach_file_rounded,
+                                              size: 16,
+                                            ),
+                                            label: Text(
+                                              _selectedFile == null
+                                                  ? 'Select Attachment'
+                                                  : 'Change Attachment',
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextField(
+                                    controller: _notesController,
+                                    maxLines: 4,
+                                    decoration: InputDecoration(
+                                      labelText: 'Notes',
+                                      hintText: 'Write your submission notes here',
+                                      isDense: true,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: FilledButton.icon(
+                                      onPressed: _submitting ? null : _handleSubmit,
+                                      icon: Icon(
+                                        _submitting
+                                            ? Icons.hourglass_top_rounded
+                                            : Icons.upload_rounded,
+                                        size: 16,
+                                      ),
+                                      label: Text(
+                                        _submitting
+                                            ? 'Submitting...'
+                                            : 'Submit Assignment',
+                                      ),
+                                    ),
+                                  ),
+                                ] else ...[
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFDC2626).withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: const Color(0xFFDC2626).withOpacity(0.18),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'You have used all attempts for this assignment.',
+                                      style: TextStyle(
+                                        color: textSecondary,
+                                        fontSize: 12.4,
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.45,
+                                      ),
+                                    ),
+                                  ),
+                                  if (sheetState.submissions.isNotEmpty &&
+                                      assignment.uuid.isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: OutlinedButton.icon(
+                                        onPressed: widget.onOpenPrevious,
+                                        icon: const Icon(
+                                          Icons.open_in_new_rounded,
+                                          size: 16,
+                                        ),
+                                        label: const Text(
+                                          'See Submission',
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ],
                             ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _notesController,
-                              maxLines: 5,
-                              decoration: InputDecoration(
-                                labelText: 'Notes',
-                                hintText: 'Write your submission notes here',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: FilledButton(
-                                onPressed: _submitting ? null : _handleSubmit,
-                                child: Text(_submitting ? 'Submitting...' : 'Submit'),
-                              ),
-                            ),
-                          ] else ...[
-                            const SizedBox(height: 18),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: AppColors.surface3(context),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: borderColor),
-                              ),
-                              child: Text(
-                                'You have used all attempts. You can still open your previous submission.',
-                                style: TextStyle(
-                                  color: textSecondary,
-                                  fontSize: 12.8,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.45,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ],
                       ),
                     );
@@ -2008,6 +2164,11 @@ class _StudentAssignment {
     return mySubmissions
         .map((item) => item.attemptNumber)
         .fold<int>(0, (max, current) => current > max ? current : max);
+  }
+
+  int get remainingAttempts {
+    final remaining = attemptsAllowed - usedAttempts;
+    return remaining < 0 ? 0 : remaining;
   }
 
   String get marksLabel {

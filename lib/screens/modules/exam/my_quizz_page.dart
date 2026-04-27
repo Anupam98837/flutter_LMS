@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:msitlms/config/appConfig.dart';
 import 'package:msitlms/screens/modules/exam/exam.dart';
+import 'package:msitlms/screens/modules/results/my_results_page.dart';
 import 'package:msitlms/theme/app_colors.dart';
 
 class MyQuizzPage extends StatefulWidget {
@@ -554,51 +555,14 @@ class _MyQuizzPageState extends State<MyQuizzPage> {
                 children: [
                   _buildHeader(),
                   const SizedBox(height: 16),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final compact = constraints.maxWidth < 640;
-                      if (compact) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildQuizCountBadge(visibleItems.length),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(child: _buildStatusDropdown()),
-                                const SizedBox(width: 8),
-                                Expanded(child: _buildSortDropdownCompact()),
-                              ],
-                            ),
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        children: [
-                          _buildQuizCountBadge(visibleItems.length),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                ConstrainedBox(
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 170),
-                                  child: _buildStatusDropdown(),
-                                ),
-                                const SizedBox(width: 8),
-                                ConstrainedBox(
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 170),
-                                  child: _buildSortDropdownCompact(),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-                    },
+                  Row(
+                    children: [
+                      _buildQuizCountBadge(visibleItems.length),
+                      const SizedBox(width: 10),
+                      Expanded(child: _buildStatusDropdown()),
+                      const SizedBox(width: 8),
+                      Expanded(child: _buildSortDropdownCompact()),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   _buildSearchField(),
@@ -679,19 +643,33 @@ class _MyQuizzPageState extends State<MyQuizzPage> {
               ),
             ),
             const Spacer(),
-            IconButton(
-              tooltip: 'Refresh',
-              onPressed: _loading ? null : () => _loadQuizItems(showLoader: true),
-              icon: _loading
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        color: AppColors.primary,
-                      ),
-                    )
-                  : const Icon(Icons.refresh_rounded),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const MyResultsPage(),
+                  ),
+                );
+              },
+              icon: const Icon(
+                Icons.workspace_premium_outlined,
+                size: 16,
+              ),
+              label: const Text('Results'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 0,
+                ),
+                minimumSize: const Size(0, 36),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                textStyle: const TextStyle(
+                  fontSize: 12.8,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ],
         ),

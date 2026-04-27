@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:msitlms/app/app_keys.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login.dart';
 
@@ -14,6 +15,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      navigatorKey: appNavigatorKey,
+      scaffoldMessengerKey: appScaffoldMessengerKey,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
