@@ -6,9 +6,11 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:msitlms/config/appConfig.dart';
 import 'package:msitlms/screens/structure.dart';
@@ -42,36 +44,84 @@ class InlineNotice {
   });
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _identifierController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
+  static const MethodChannel _deepLinkMethodChannel = MethodChannel(
+    'msitlms/deep_links',
+  );
+  static const EventChannel _deepLinkEventChannel = EventChannel(
+    'msitlms/deep_links/events',
+  );
+  static const String _sendLoginOtpApi = '/api/auth/send-login-otp';
+  static const String _loginWithOtpApi = '/api/auth/login-with-otp';
+  static const String _checkApi = '/api/auth/check';
+  static const String _googleRedirectPath = '/api/auth/google/redirect';
+  static const int _captchaLength = 6;
+  static const int _otpLength = 6;
+  static const String _allowedDomain1 = 'msit.edu.in';
+  static const String _allowedDomain2 = 'hallienz.com';
+  static const String _allowedDomain3 = 'hallienz.org';
+
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _captchaController = TextEditingController();
+  final List<TextEditingController> _otpControllers = List.generate(
+    _otpLength,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _otpFocusNodes = List.generate(
+    _otpLength,
+    (_) => FocusNode(),
+  );
+
+  final math.Random _random = math.Random();
 
   bool _keepLoggedIn = false;
-  bool _submitting = false;
   bool _checkingSavedSession = false;
-  bool _showPassword = false;
+  bool _sendingOtp = false;
+  bool _verifyingOtp = false;
+  bool _googleLoading = false;
+  bool _otpSent = false;
+  bool _captchaSolved = false;
+  int _resendSeconds = 0;
+  int _otpSendCount = 0;
 
-  String? _identifierError;
-  String? _passwordError;
-  String? _successUserName;
-
+  String _captchaText = '';
+  String? _emailError;
   InlineNotice? _notice;
+
+  Timer? _resendTimer;
+  Timer? _autoVerifyTimer;
+  StreamSubscription<dynamic>? _deepLinkSubscription;
+  String? _lastHandledCallbackUrl;
+  bool _handlingGoogleCallback = false;
 
   @override
   void initState() {
     super.initState();
-    _identifierController.text = widget.initialIdentifier?.trim() ?? '';
-    _passwordController.text = widget.initialPassword ?? '';
+    WidgetsBinding.instance.addObserver(this);
+    _emailController.text = widget.initialIdentifier?.trim() ?? '';
+    _captchaText = _generateCaptchaText();
+    _initGoogleCallbackHandling();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleEmailChanged();
       _tryAutoLoginFromSavedToken();
     });
   }
 
   @override
   void dispose() {
-    _identifierController.dispose();
-    _passwordController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _resendTimer?.cancel();
+    _autoVerifyTimer?.cancel();
+    _deepLinkSubscription?.cancel();
+    _emailController.dispose();
+    _captchaController.dispose();
+    for (final controller in _otpControllers) {
+      controller.dispose();
+    }
+    for (final focusNode in _otpFocusNodes) {
+      focusNode.dispose();
+    }
     super.dispose();
   }
 
@@ -87,39 +137,6 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _notice = null;
     });
-  }
-
-  bool _validateInputs() {
-    final identifier = _identifierController.text.trim();
-    final password = _passwordController.text;
-
-    String? identifierError;
-    String? passwordError;
-
-    if (identifier.isEmpty) {
-      identifierError = 'Please enter your email address.';
-    }
-
-    if (password.isEmpty) {
-      passwordError = 'Please enter your password.';
-    } else if (password.length < 6) {
-      passwordError = 'Password must be at least 6 characters.';
-    }
-
-    final String? firstError = identifierError ?? passwordError;
-
-    setState(() {
-      _identifierError = identifierError;
-      _passwordError = passwordError;
-      if (firstError != null) {
-        _notice = InlineNotice(
-          message: firstError,
-          type: NoticeType.error,
-        );
-      }
-    });
-
-    return firstError == null;
   }
 
   Map<String, dynamic> _decodeResponse(http.Response response) {
@@ -225,7 +242,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     if (error is HandshakeException) {
-      return 'Secure connection failed on iPhone. The SSL certificate for msitlms.tecnixs.com may need server-side fixing.';
+      return 'Secure connection failed on iPhone. The SSL certificate for the server may need fixing.';
     }
 
     if (error is HttpException) {
@@ -281,7 +298,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final result = await _getJson(
-        '${AppConfig.baseUrl}/api/auth/check',
+        '${AppConfig.baseUrl}$_checkApi',
         headers: {
           HttpHeaders.authorizationHeader: 'Bearer $token',
         },
@@ -296,27 +313,21 @@ class _LoginPageState extends State<LoginPage> {
             Map<String, dynamic>.from(data['user'] as Map);
 
         final String resolvedRole =
-            (userMap['role'] ?? savedRole ?? 'student')
+            (userMap['role'] ?? savedRole)
                 .toString()
                 .trim()
-                .toLowerCase();
+                .toLowerCase()
+                .ifEmpty('student');
 
         await _saveAuth(
           token: token,
-          role: resolvedRole.isEmpty ? 'student' : resolvedRole,
+          role: resolvedRole,
           keepLoggedIn: true,
         );
 
         redirectUserName = (userMap['name'] ?? 'User').toString();
       } else {
         await _clearAuth();
-        _setNotice(
-          _extractMessage(
-            data,
-            fallback: 'Your session expired. Please log in again.',
-          ),
-          NoticeType.error,
-        );
       }
     } on TimeoutException catch (e) {
       debugPrint('Auto-login timeout: $e');
@@ -336,27 +347,430 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _submitLogin() async {
-    FocusScope.of(context).unfocus();
-    _clearNotice();
+  String _normalizeEmail(String value) => value.trim().toLowerCase();
 
-    if (!_validateInputs()) return;
+  bool _validEmail(String value) {
+    return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(
+      _normalizeEmail(value),
+    );
+  }
 
+  String _getEmailDomain(String value) {
+    final email = _normalizeEmail(value);
+    final atPos = email.lastIndexOf('@');
+    if (atPos == -1) return '';
+    return email.substring(atPos + 1);
+  }
+
+  bool _hasAllowedDomain(String value) {
+    final domain = _getEmailDomain(value);
+    return domain == _allowedDomain1 ||
+        domain == _allowedDomain2 ||
+        domain == _allowedDomain3;
+  }
+
+  Future<void> _initGoogleCallbackHandling() async {
+    _deepLinkSubscription = _deepLinkEventChannel.receiveBroadcastStream().listen(
+      (dynamic link) {
+        final uri = Uri.tryParse(link?.toString() ?? '');
+        if (uri != null) {
+          _handleIncomingGoogleCallback(uri);
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('Google callback stream error: $error');
+        debugPrintStack(stackTrace: stackTrace);
+        if (mounted) {
+          setState(() {
+            _googleLoading = false;
+          });
+        }
+      },
+    );
+
+    await _pullPendingGoogleCallback(method: 'getInitialLink');
+  }
+
+  Future<void> _pullPendingGoogleCallback({
+    String method = 'getLatestLink',
+  }) async {
+    try {
+      final link = await _deepLinkMethodChannel.invokeMethod<String>(method);
+      final uri = Uri.tryParse(link ?? '');
+      if (uri != null) {
+        await _handleIncomingGoogleCallback(uri);
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Pending app link error: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> _clearPendingGoogleCallback() async {
+    try {
+      await _deepLinkMethodChannel.invokeMethod<void>('clearLatestLink');
+    } catch (error, stackTrace) {
+      debugPrint('Clear app link error: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _pullPendingGoogleCallback();
+    }
+  }
+
+  bool _isGoogleCallbackUri(Uri uri) {
+    final path = uri.path.startsWith('/') ? uri.path : '/${uri.path}';
+    return uri.scheme == 'msitlms' &&
+        uri.host == 'auth' &&
+        path == '/callback';
+  }
+
+  Future<void> _handleIncomingGoogleCallback(Uri uri) async {
+    if (!_isGoogleCallbackUri(uri)) return;
+
+    final callbackUrl = uri.toString();
+    if (_handlingGoogleCallback || _lastHandledCallbackUrl == callbackUrl) {
+      return;
+    }
+
+    final status = (uri.queryParameters['status'] ?? '').trim().toLowerCase();
+    if (status.isEmpty) return;
+
+    _handlingGoogleCallback = true;
+    _lastHandledCallbackUrl = callbackUrl;
+
+    final token = (uri.queryParameters['token'] ?? '').trim();
+    final role =
+        (uri.queryParameters['role'] ?? 'student').trim().toLowerCase();
+    final keepValue = (uri.queryParameters['keep'] ?? '').trim();
+    final keepLoggedIn =
+        keepValue == '1' || keepValue.toLowerCase() == 'true';
+    final name = (uri.queryParameters['name'] ?? '').trim();
+    final message = (uri.queryParameters['message'] ?? '').trim();
+
+    if (mounted) {
+      setState(() {
+        _googleLoading = false;
+      });
+    }
+
+    try {
+      if (status == 'success') {
+        if (token.isEmpty) {
+          await _clearPendingGoogleCallback();
+          _setNotice(
+            message.isNotEmpty ? message : 'Google login failed.',
+            NoticeType.error,
+          );
+          return;
+        }
+
+        await _saveAuth(
+          token: token,
+          role: role.isEmpty ? 'student' : role,
+          keepLoggedIn: keepLoggedIn,
+        );
+
+        await _clearPendingGoogleCallback();
+        _clearNotice();
+        _goToStructure(userName: name.isEmpty ? null : name);
+        return;
+      }
+
+      if (status == 'error') {
+        await _clearPendingGoogleCallback();
+        _setNotice(
+          message.isNotEmpty ? message : 'Google login failed.',
+          NoticeType.error,
+        );
+      }
+    } finally {
+      _handlingGoogleCallback = false;
+    }
+  }
+
+  bool _isAllowedInstituteEmail(String value) {
+    return _validEmail(value) && _hasAllowedDomain(value);
+  }
+
+  String _generateCaptchaText() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    return List.generate(
+      _captchaLength,
+      (_) => chars[_random.nextInt(chars.length)],
+    ).join();
+  }
+
+  void _generateNewCaptcha({bool clearInput = true}) {
+    _autoVerifyTimer?.cancel();
     setState(() {
-      _submitting = true;
-      _successUserName = null;
+      _captchaText = _generateCaptchaText();
+      _captchaSolved = false;
+      if (clearInput) {
+        _captchaController.clear();
+      }
+    });
+  }
+
+  void _stopOtpCooldown() {
+    _resendTimer?.cancel();
+    _resendTimer = null;
+    if (!mounted) return;
+    setState(() {
+      _resendSeconds = 0;
+    });
+  }
+
+  void _startOtpCooldown(int seconds) {
+    _resendTimer?.cancel();
+    setState(() {
+      _resendSeconds = seconds;
     });
 
-    String? redirectUserName;
+    if (seconds <= 0) return;
+
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (_resendSeconds <= 1) {
+        timer.cancel();
+        setState(() {
+          _resendSeconds = 0;
+        });
+      } else {
+        setState(() {
+          _resendSeconds -= 1;
+        });
+      }
+    });
+  }
+
+  int _delayForCount(int count) {
+    const delays = [30, 60, 120, 180, 240, 300];
+    final index = math.max(0, math.min(count - 1, delays.length - 1));
+    return delays[index];
+  }
+
+  String get _currentEmail => _normalizeEmail(_emailController.text);
+
+  bool get _canUnlockCaptcha =>
+      _isAllowedInstituteEmail(_currentEmail) &&
+      !_sendingOtp &&
+      !_verifyingOtp;
+
+  bool get _canSendOtp =>
+      _canUnlockCaptcha && _captchaSolved && _resendSeconds <= 0;
+
+  String get _otpValue =>
+      _otpControllers.map((controller) => controller.text.trim()).join();
+
+  bool get _canVerifyOtp =>
+      _otpSent && !_verifyingOtp && _otpValue.length == _otpLength;
+
+  void _clearOtpBoxes() {
+    for (final controller in _otpControllers) {
+      controller.clear();
+    }
+    _autoVerifyTimer?.cancel();
+  }
+
+  void _focusOtpBox(int index) {
+    if (index < 0 || index >= _otpFocusNodes.length) return;
+    final node = _otpFocusNodes[index];
+    if (!node.canRequestFocus) return;
+    node.requestFocus();
+  }
+
+  void _focusFirstEmptyOtpBox() {
+    final index = _otpControllers.indexWhere(
+      (controller) => controller.text.trim().isEmpty,
+    );
+    _focusOtpBox(index == -1 ? _otpControllers.length - 1 : index);
+  }
+
+  void _resetOtpState({bool hidePanel = true}) {
+    _autoVerifyTimer?.cancel();
+    _clearOtpBoxes();
+    setState(() {
+      _otpSent = !hidePanel && _otpSent;
+      if (hidePanel) {
+        _otpSent = false;
+      }
+    });
+  }
+
+  void _prepareOtpEntryState() {
+    _clearOtpBoxes();
+    setState(() {
+      _otpSent = true;
+    });
+    Future.delayed(const Duration(milliseconds: 80), () {
+      if (mounted) _focusOtpBox(0);
+    });
+  }
+
+  void _handleEmailChanged() {
+    _clearNotice();
+
+    if (_emailError != null) {
+      setState(() {
+        _emailError = null;
+      });
+    }
+
+    _otpSendCount = 0;
+    _stopOtpCooldown();
+    _resetOtpState();
+    if (_captchaController.text.isNotEmpty || _captchaSolved) {
+      setState(() {
+        _captchaController.clear();
+        _captchaSolved = false;
+      });
+    }
+  }
+
+  void _validateCaptchaInput(String rawValue) {
+    final normalized = rawValue.replaceAll(RegExp(r'\s+'), '').toUpperCase();
+    if (normalized != rawValue) {
+      _captchaController.value = TextEditingValue(
+        text: normalized,
+        selection: TextSelection.collapsed(offset: normalized.length),
+      );
+    }
+
+    if (!_canUnlockCaptcha) {
+      if (_captchaSolved) {
+        setState(() {
+          _captchaSolved = false;
+        });
+      }
+      return;
+    }
+
+    final solved = normalized.isNotEmpty && normalized == _captchaText;
+    if (_captchaSolved == solved) return;
+
+    setState(() {
+      _captchaSolved = solved;
+    });
+  }
+
+  Future<void> _sendOtp() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    final email = _currentEmail;
+
+    if (!_validEmail(email)) {
+      setState(() {
+        _emailError = 'Please enter a valid email address.';
+      });
+      _setNotice('Please enter a valid email.', NoticeType.error);
+      return;
+    }
+
+    if (!_hasAllowedDomain(email)) {
+      setState(() {
+        _emailError = 'Your gmail not allowed.';
+      });
+      _setNotice('Your email is not allowed.', NoticeType.error);
+      return;
+    }
+
+    if (!_captchaSolved) {
+      _setNotice('Please enter the correct captcha first.', NoticeType.error);
+      return;
+    }
+
+    setState(() {
+      _sendingOtp = true;
+    });
+    _clearNotice();
+    _resetOtpState();
 
     try {
       final result = await _postJson(
-        '${AppConfig.baseUrl}/api/auth/login',
+        '${AppConfig.baseUrl}$_sendLoginOtpApi',
+        {'email': email},
+      );
+
+      final int statusCode = result['statusCode'] as int;
+      final Map<String, dynamic> data =
+          result['data'] as Map<String, dynamic>;
+
+      if (statusCode == 429) {
+        final seconds = int.tryParse('${data['seconds_left'] ?? 0}') ?? 0;
+        if (seconds > 0) {
+          _startOtpCooldown(seconds);
+        }
+        _setNotice(
+          _extractMessage(
+            data,
+            fallback: 'Please wait before requesting another OTP.',
+          ),
+          NoticeType.warning,
+        );
+        return;
+      }
+
+      if (statusCode < 200 || statusCode >= 300) {
+        _setNotice(
+          _extractMessage(data, fallback: 'Failed to send OTP.'),
+          NoticeType.error,
+        );
+        _generateNewCaptcha();
+        return;
+      }
+
+      _otpSendCount += 1;
+      _startOtpCooldown(_delayForCount(_otpSendCount));
+      _prepareOtpEntryState();
+      _setNotice(
+        _extractMessage(data, fallback: 'OTP sent successfully.'),
+        NoticeType.success,
+      );
+    } on TimeoutException {
+      _setNotice('Request timed out while sending OTP.', NoticeType.error);
+    } on SocketException catch (e, st) {
+      debugPrint('Send OTP socket error: $e');
+      debugPrintStack(stackTrace: st);
+      _setNotice(_humanizeNetworkError(e), NoticeType.error);
+    } catch (e, st) {
+      debugPrint('Send OTP error: $e');
+      debugPrintStack(stackTrace: st);
+      _setNotice(_humanizeNetworkError(e), NoticeType.error);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _sendingOtp = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loginWithOtp() async {
+    if (!_canVerifyOtp) return;
+
+    final email = _currentEmail;
+    final otp = _otpValue.replaceAll(RegExp(r'\D'), '');
+
+    setState(() {
+      _verifyingOtp = true;
+    });
+    _clearNotice();
+
+    try {
+      final result = await _postJson(
+        '${AppConfig.baseUrl}$_loginWithOtpApi',
         {
-          'login': _identifierController.text.trim(),
-          'email': _identifierController.text.trim(),
-          'password': _passwordController.text,
-          'remember': _keepLoggedIn,
+          'email': email,
+          'otp': otp,
         },
       );
 
@@ -364,33 +778,30 @@ class _LoginPageState extends State<LoginPage> {
       final Map<String, dynamic> data =
           result['data'] as Map<String, dynamic>;
 
-      if (kDebugMode) {
-        debugPrint('Login statusCode: $statusCode');
-        debugPrint('Login response: $data');
-      }
-
-      if (statusCode == 422) {
-        setState(() {
-          _passwordError = 'invalid';
-        });
-        _setNotice(
-          _extractMessage(
-            data,
-            fallback: 'Incorrect email or password. Please try again.',
-          ),
-          NoticeType.error,
-        );
-        return;
-      }
-
       if (statusCode < 200 || statusCode >= 300) {
-        setState(() {
-          _passwordError = 'invalid';
-        });
+        final bool shouldResetOtp = data['expired'] == true ||
+            statusCode == 404 ||
+            statusCode == 429;
+
+        if (shouldResetOtp) {
+          _clearOtpBoxes();
+          setState(() {
+            _otpSent = false;
+          });
+          _generateNewCaptcha();
+        } else {
+          _clearOtpBoxes();
+          Future.delayed(const Duration(milliseconds: 80), () {
+            if (mounted) _focusOtpBox(0);
+          });
+        }
+
         _setNotice(
           _extractMessage(
             data,
-            fallback: 'Unable to log in.',
+            fallback: shouldResetOtp
+                ? 'OTP expired. Please request a new OTP.'
+                : 'OTP verification failed.',
           ),
           NoticeType.error,
         );
@@ -418,53 +829,79 @@ class _LoginPageState extends State<LoginPage> {
         keepLoggedIn: _keepLoggedIn,
       );
 
-      _passwordController.clear();
-      redirectUserName = (userMap['name'] ?? 'User').toString();
+      final userName = (userMap['name'] ?? 'User').toString();
+      _setNotice('Login successful. Redirecting...', NoticeType.success);
+
+      if (!mounted) return;
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (mounted) {
+          _goToStructure(userName: userName);
+        }
+      });
     } on TimeoutException {
-      _setNotice('Request timed out while logging in.', NoticeType.error);
+      _setNotice('Request timed out while verifying OTP.', NoticeType.error);
     } on SocketException catch (e, st) {
-      debugPrint('SocketException: $e');
-      debugPrintStack(stackTrace: st);
-      _setNotice(_humanizeNetworkError(e), NoticeType.error);
-    } on HandshakeException catch (e, st) {
-      debugPrint('HandshakeException: $e');
-      debugPrintStack(stackTrace: st);
-      _setNotice(_humanizeNetworkError(e), NoticeType.error);
-    } on HttpException catch (e, st) {
-      debugPrint('HttpException: $e');
+      debugPrint('Verify OTP socket error: $e');
       debugPrintStack(stackTrace: st);
       _setNotice(_humanizeNetworkError(e), NoticeType.error);
     } catch (e, st) {
-      debugPrint('Login error: $e');
+      debugPrint('Verify OTP error: $e');
       debugPrintStack(stackTrace: st);
       _setNotice(_humanizeNetworkError(e), NoticeType.error);
     } finally {
       if (mounted) {
         setState(() {
-          _submitting = false;
+          _verifyingOtp = false;
         });
       }
     }
-
-    if (redirectUserName != null && mounted) {
-      setState(() {
-        _notice = null;
-        _identifierError = null;
-        _passwordError = null;
-        _successUserName = redirectUserName;
-      });
-    }
   }
 
-  void _continueAfterSuccess() {
-    final userName = _successUserName;
-    if (userName == null) return;
+  void _triggerOtpAutoVerify() {
+    _autoVerifyTimer?.cancel();
+    if (!_canVerifyOtp) return;
+    _autoVerifyTimer = Timer(const Duration(milliseconds: 160), _loginWithOtp);
+  }
+
+  Future<void> _launchGoogleSignIn() async {
+    final uri = Uri.parse(
+      '${AppConfig.baseUrl}$_googleRedirectPath?keep=${_keepLoggedIn ? 1 : 0}&source=app',
+    );
 
     setState(() {
-      _successUserName = null;
+      _googleLoading = true;
     });
+    _lastHandledCallbackUrl = null;
 
-    _goToStructure(userName: userName);
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched) {
+        _setNotice(
+          'Could not open Google sign-in. Please try again.',
+          NoticeType.error,
+        );
+        if (mounted) {
+          setState(() {
+            _googleLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      _setNotice(
+        'Could not open Google sign-in. Please try again.',
+        NoticeType.error,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _googleLoading = false;
+        });
+      }
+    }
   }
 
   String _noticeTitle(NoticeType type) {
@@ -474,13 +911,38 @@ class _LoginPageState extends State<LoginPage> {
       case NoticeType.error:
         return 'Authentication Failed';
       case NoticeType.warning:
-        return 'Action Required';
+        return 'Please Wait';
     }
+  }
+
+  String _captchaStatusText() {
+    if (_currentEmail.isEmpty) return 'Enter your institute email first.';
+    if (!_validEmail(_currentEmail)) return 'Enter a proper email format first.';
+    if (!_hasAllowedDomain(_currentEmail)) {
+      return 'Your gmail not allowed.';
+    }
+    if (_captchaSolved) return 'Captcha verified. You can send OTP now.';
+    return 'Enter captcha to continue.';
+  }
+
+  String _captchaLockText() {
+    if (_currentEmail.isEmpty) return 'Locked';
+    if (!_validEmail(_currentEmail)) return 'Enter valid email first';
+    if (!_hasAllowedDomain(_currentEmail)) return 'Email not allowed';
+    return 'Click captcha to refresh';
+  }
+
+  String _otpStatusText() {
+    if (_verifyingOtp) return 'Verifying OTP and logging you in...';
+    if (_sendingOtp) return 'Sending OTP...';
+    if (_otpSent) {
+      return 'OTP sent successfully. Enter all 6 digits. Login will happen automatically.';
+    }
+    return 'After OTP is sent, enter the 6 digits. Login will happen automatically.';
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isBlocking = _submitting || _checkingSavedSession;
     final backgroundColor = AppColors.background(context);
     final surfaceColor = AppColors.surface(context);
     final surface3Color = AppColors.surface3(context);
@@ -537,9 +999,9 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       const SizedBox(height: 8),
                       _buildBrandBlock(),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 24),
                       Text(
-                        'Welcome back',
+                        'Sign in',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: textPrimary,
@@ -549,209 +1011,79 @@ class _LoginPageState extends State<LoginPage> {
                           height: 1.04,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Text(
-                        'Enter your credentials to access your\naccount.',
+                        'Use your institute email to receive OTP and continue to your dashboard.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: textSecondary,
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           height: 1.45,
                         ),
                       ),
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 20),
                       if (_notice != null) ...[
                         _buildInlineNotice(),
                         const SizedBox(height: 18),
                       ],
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Institute Email',
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       _buildInputField(
-                        controller: _identifierController,
-                        hint: 'alex.m@example.com',
+                        controller: _emailController,
+                        hint: 'Enter your institute email',
                         icon: FontAwesomeIcons.envelope,
-                        onChanged: (_) {
-                          if (_identifierError != null || _notice != null) {
-                            setState(() {
-                              _identifierError = null;
-                            });
-                            _clearNotice();
-                          }
-                        },
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
-                      ),
-                      const SizedBox(height: 14),
-                      _buildInputField(
-                        controller: _passwordController,
-                        hint: '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022',
-                        icon: FontAwesomeIcons.lock,
-                        obscureText: !_showPassword,
-                        hasError: _passwordError != null,
-                        onFieldSubmitted: (_) => _submitLogin(),
-                        textInputAction: TextInputAction.done,
-                        suffix: IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _showPassword = !_showPassword;
-                            });
-                          },
-                          icon: FaIcon(
-                            _showPassword
-                                ? FontAwesomeIcons.eye
-                                : FontAwesomeIcons.eyeSlash,
-                            size: 20,
-                            color: textSecondary,
-                          ),
-                        ),
-                        onChanged: (_) {
-                          if (_passwordError != null || _notice != null) {
-                            setState(() {
-                              _passwordError = null;
-                            });
-                            _clearNotice();
+                        hasError: _emailError != null,
+                        onChanged: (_) => _handleEmailChanged(),
+                        onFieldSubmitted: (_) {
+                          if (_canSendOtp) {
+                            _sendOtp();
                           }
                         },
                       ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _keepLoggedIn = !_keepLoggedIn;
-                              });
-                            },
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: _keepLoggedIn
-                                    ? AppColors.primaryGlow
-                                    : surfaceColor,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: _keepLoggedIn
-                                      ? AppColors.primaryGlow
-                                      : AppColors.borderSoft(context),
-                                ),
-                                boxShadow: _keepLoggedIn
-                                    ? [
-                                        BoxShadow(
-                                          color: AppColors.primaryGlow
-                                              .withOpacity(0.24),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: Icon(
-                                Icons.check_rounded,
-                                size: 18,
-                                color: _keepLoggedIn
-                                    ? Colors.white
-                                    : Colors.transparent,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Keep me signed in',
-                              style: TextStyle(
-                                color: textSecondary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: widget.onForgotPassword,
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.accentText,
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Forgot password?',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 26),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 60,
-                        child: ElevatedButton(
-                          onPressed: isBlocking ? null : _submitLogin,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor:
-                                AppColors.primary.withOpacity(0.45),
-                            elevation: 0,
-                            shadowColor:
-                                AppColors.primary.withOpacity(0.28),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Sign In',
-                                style: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              const Icon(
-                                Icons.chevron_right_rounded,
-                                size: 24,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 36),
-                      RichText(
-                        textAlign: TextAlign.center,
-                        text: TextSpan(
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _emailError ?? _captchaStatusText(),
                           style: TextStyle(
-                            fontSize: 14,
+                            color: _emailError != null
+                                ? AppColors.dangerAccent(context)
+                                : (_captchaSolved
+                                      ? AppColors.success
+                                      : textSecondary),
+                            fontSize: 12,
                             fontWeight: FontWeight.w700,
                           ),
-                          children: [
-                            TextSpan(
-                              text: "Don't have an account? ",
-                              style: TextStyle(
-                                color: textSecondary,
-                              ),
-                            ),
-                            TextSpan(
-                              text: 'Create one',
-                              style: TextStyle(
-                                color: AppColors.accentText,
-                              ),
-                            ),
-                          ],
                         ),
                       ),
+                      const SizedBox(height: 14),
+                      _buildCaptchaCard(),
+                      const SizedBox(height: 12),
+                      if (_otpSent) ...[
+                        _buildOtpPanel(),
+                        const SizedBox(height: 16),
+                      ],
+                      _buildKeepSignedInRow(),
                     ],
                   ),
                 ),
               ),
             ),
           ),
-          if (isBlocking) _buildLoadingOverlay(),
-          if (_successUserName != null) _buildSuccessOverlay(),
+          if (_checkingSavedSession) _buildLoadingOverlay(),
         ],
       ),
     );
@@ -800,10 +1132,32 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildInlineNotice() {
     final InlineNotice notice = _notice!;
-    final fillColor = AppColors.dangerFill(context);
-    final borderColor = AppColors.dangerOutline(context);
-    final accentColor = AppColors.dangerAccent(context);
-    final labelColor = AppColors.dangerLabel(context);
+
+    late final Color fillColor;
+    late final Color borderColor;
+    late final Color accentColor;
+    late final Color labelColor;
+
+    switch (notice.type) {
+      case NoticeType.success:
+        fillColor = const Color(0xFFEAF7EF);
+        borderColor = const Color(0xFFB7E2C3);
+        accentColor = const Color(0xFF15803D);
+        labelColor = const Color(0xFF166534);
+        break;
+      case NoticeType.warning:
+        fillColor = const Color(0xFFFFF5E6);
+        borderColor = const Color(0xFFF5D8A2);
+        accentColor = const Color(0xFFB45309);
+        labelColor = const Color(0xFF92400E);
+        break;
+      case NoticeType.error:
+        fillColor = AppColors.dangerFill(context);
+        borderColor = AppColors.dangerOutline(context);
+        accentColor = AppColors.dangerAccent(context);
+        labelColor = AppColors.dangerLabel(context);
+        break;
+    }
 
     return Container(
       width: double.infinity,
@@ -831,7 +1185,11 @@ class _LoginPageState extends State<LoginPage> {
             ),
             child: Center(
               child: FaIcon(
-                FontAwesomeIcons.exclamation,
+                notice.type == NoticeType.success
+                    ? FontAwesomeIcons.check
+                    : notice.type == NoticeType.warning
+                    ? FontAwesomeIcons.clock
+                    : FontAwesomeIcons.exclamation,
                 size: 14,
                 color: accentColor,
               ),
@@ -870,7 +1228,7 @@ class _LoginPageState extends State<LoginPage> {
           GestureDetector(
             onTap: _clearNotice,
             child: Padding(
-              padding: EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 4),
               child: Icon(
                 Icons.close_rounded,
                 size: 24,
@@ -973,26 +1331,569 @@ class _LoginPageState extends State<LoginPage> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(
-              color: hasError ? AppColors.softBorder(context) : AppColors.primary,
-              width: 1.3,
-            ),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(
-              color: AppColors.softBorder(context),
-              width: 1.1,
-            ),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(
-              color: AppColors.softBorder(context),
+              color: hasError
+                  ? AppColors.softBorder(context)
+                  : AppColors.primary,
               width: 1.3,
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCaptchaCard() {
+    final surfaceColor = AppColors.surface(context);
+    final surface3Color = AppColors.surface3(context);
+    final borderColor = AppColors.borderSoft(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
+    final isLocked = !_canUnlockCaptcha;
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 180),
+      opacity: isLocked ? 0.72 : 1,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: surface3Color,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const FaIcon(
+                  FontAwesomeIcons.shieldHalved,
+                  size: 14,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Captcha Verification',
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const Spacer(),
+                Flexible(
+                  child: Text(
+                    _captchaLockText(),
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _buildCaptchaPreview(
+              surfaceColor,
+              borderColor,
+              isLocked,
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCaptchaInput(
+                    surfaceColor,
+                    borderColor,
+                    isLocked,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 112,
+                  child: _buildOtpSendButton(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 9),
+            Text(
+              _captchaSolved
+                  ? 'Captcha verified. You can send OTP now.'
+                  : _canUnlockCaptcha
+                  ? 'Type the captcha correctly to enable Send OTP.'
+                  : 'Your gmail not allowed.',
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCaptchaPreview(
+    Color surfaceColor,
+    Color borderColor,
+    bool isLocked,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: isLocked
+            ? null
+            : () {
+                _generateNewCaptcha();
+                FocusManager.instance.primaryFocus?.unfocus();
+              },
+        child: Ink(
+          height: 50,
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: borderColor),
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: _CaptchaNoisePainter(
+                      seed: _captchaText.hashCode,
+                      color: AppColors.primary.withOpacity(0.14),
+                    ),
+                  ),
+                ),
+              ),
+              Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: _captchaText.split('').asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final char = entry.value;
+                    final angle = (index.isEven ? -1 : 1) * 0.11;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Transform.rotate(
+                        angle: angle,
+                        child: Text(
+                          char,
+                          style: TextStyle(
+                            color: index.isEven
+                                ? const Color(0xFF6B2528)
+                                : AppColors.primary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCaptchaInput(
+    Color surfaceColor,
+    Color borderColor,
+    bool isLocked,
+  ) {
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
+
+    return TextField(
+      controller: _captchaController,
+      enabled: !isLocked,
+      textCapitalization: TextCapitalization.characters,
+      onChanged: _validateCaptchaInput,
+      onSubmitted: (_) {
+        if (_canSendOtp) {
+          _sendOtp();
+        }
+      },
+      style: TextStyle(
+        color: textPrimary,
+        fontSize: 13,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.2,
+      ),
+      decoration: InputDecoration(
+        hintText: 'Enter captcha',
+        hintStyle: TextStyle(
+          color: textSecondary,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
+        ),
+        filled: true,
+        fillColor: surfaceColor,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 14,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: borderColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: borderColor),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOtpSendButton() {
+    String label = 'OTP';
+    IconData icon = FontAwesomeIcons.paperPlane;
+
+    if (_sendingOtp) {
+      label = 'Sending';
+      icon = FontAwesomeIcons.spinner;
+    } else if (_resendSeconds > 0) {
+      label = '${_resendSeconds}s';
+      icon = FontAwesomeIcons.clock;
+    } else if (_otpSent) {
+      label = 'Resend';
+      icon = FontAwesomeIcons.rotateRight;
+    }
+
+    return SizedBox(
+      height: 50,
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _canSendOtp ? _sendOtp : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.primary.withOpacity(0.45),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_sendingOtp)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            else
+              FaIcon(icon, size: 13),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOtpPanel() {
+    final borderColor = AppColors.borderSoft(context);
+    final surface3Color = AppColors.surface3(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: surface3Color,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const FaIcon(
+                FontAwesomeIcons.solidEnvelope,
+                size: 14,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Enter OTP',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.surface(context),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: borderColor),
+                ),
+                child: Text(
+                  _verifyingOtp ? 'Verifying...' : 'Auto login on 6th digit',
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (int index = 0; index < _otpLength; index++) ...[
+                Expanded(child: _buildOtpDigit(index)),
+                if (index != _otpLength - 1)
+                  SizedBox(width: index == 2 ? 14 : 10),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  _otpStatusText(),
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              TextButton(
+                onPressed:
+                    (_sendingOtp || _verifyingOtp || _resendSeconds > 0)
+                    ? null
+                    : _sendOtp,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.accentText,
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  _resendSeconds > 0 ? 'Resend in ${_resendSeconds}s' : 'Resend OTP',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOtpDigit(int index) {
+    final controller = _otpControllers[index];
+    final focusNode = _otpFocusNodes[index];
+    final filled = controller.text.trim().isNotEmpty;
+    final textPrimary = AppColors.textPrimary(context);
+    final borderColor = AppColors.borderSoft(context);
+    final activeBorder = AppColors.primary.withOpacity(0.58);
+
+    return AspectRatio(
+      aspectRatio: 1,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        enabled: _otpSent && !_verifyingOtp,
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        textInputAction: index == _otpLength - 1
+            ? TextInputAction.done
+            : TextInputAction.next,
+        style: TextStyle(
+          color: textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w900,
+        ),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: filled
+              ? AppColors.surface(context)
+              : AppColors.surface3(context),
+          contentPadding: EdgeInsets.zero,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: filled ? activeBorder : borderColor,
+              width: filled ? 1.8 : 1.4,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(
+              color: AppColors.primary,
+              width: 2,
+            ),
+          ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: borderColor,
+              width: 1.3,
+            ),
+          ),
+        ),
+        onChanged: (value) {
+          var digit = value.replaceAll(RegExp(r'\D'), '');
+          if (digit.length > 1) {
+            digit = digit.substring(digit.length - 1);
+          }
+          if (controller.text != digit) {
+            controller.value = TextEditingValue(
+              text: digit,
+              selection: TextSelection.collapsed(offset: digit.length),
+            );
+          }
+          setState(() {});
+          if (digit.isNotEmpty && index < _otpLength - 1) {
+            _focusOtpBox(index + 1);
+          }
+          _triggerOtpAutoVerify();
+        },
+        onTap: () {
+          if (_verifyingOtp) return;
+          controller.selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: controller.text.length,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildKeepSignedInRow() {
+    final textSecondary = AppColors.textSecondary(context);
+    final surfaceColor = AppColors.surface(context);
+    final borderColor = AppColors.borderSoft(context);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _keepLoggedIn = !_keepLoggedIn;
+                  });
+                },
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: _keepLoggedIn ? AppColors.primaryGlow : surfaceColor,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: _keepLoggedIn
+                          ? AppColors.primaryGlow
+                          : borderColor,
+                    ),
+                    boxShadow: _keepLoggedIn
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primaryGlow.withOpacity(0.24),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Icon(
+                    Icons.check_rounded,
+                    size: 18,
+                    color: _keepLoggedIn ? Colors.white : Colors.transparent,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Keep me signed in',
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          height: 42,
+          child: OutlinedButton.icon(
+            onPressed:
+                _checkingSavedSession || _googleLoading ? null : _launchGoogleSignIn,
+            style: OutlinedButton.styleFrom(
+              backgroundColor: surfaceColor,
+              foregroundColor: AppColors.textPrimary(context),
+              side: BorderSide(color: borderColor),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            icon: const FaIcon(
+              FontAwesomeIcons.google,
+              size: 14,
+              color: Color(0xFFDB4437),
+            ),
+            label: Text(
+              _googleLoading ? 'Opening...' : 'Google',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1053,7 +1954,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'Signing you in...',
+                    'Checking your session...',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: textPrimary,
@@ -1063,118 +1964,12 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _checkingSavedSession
-                        ? 'Restoring your last session'
-                        : 'Verifying credentials',
+                    'Restoring your last session',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: textSecondary,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSuccessOverlay() {
-    final surfaceColor = AppColors.surface(context);
-    final textPrimary = AppColors.textPrimary(context);
-    final textSecondary = AppColors.textSecondary(context);
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              color: (AppColors.isDark(context)
-                      ? AppColors.darkBackground
-                      : AppColors.lightSurface2)
-                  .withOpacity(0.60),
-            ),
-          ),
-          Center(
-            child: Container(
-              width: 680,
-              constraints: const BoxConstraints(maxWidth: 420),
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
-              decoration: BoxDecoration(
-                color: surfaceColor,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primaryGlow.withOpacity(0.16),
-                    blurRadius: 28,
-                    offset: const Offset(0, 14),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 92,
-                    height: 92,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.success,
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.check_rounded,
-                        color: Colors.white,
-                        size: 50,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Signed in${_successUserName == null ? '' : ' — Welcome back.'}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 23,
-                      fontWeight: FontWeight.w900,
-                      height: 1.22,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Your authentication was successful.\nRedirecting you to your dashboard.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      height: 1.45,
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: ElevatedButton(
-                      onPressed: _continueAfterSuccess,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text(
-                        'Continue',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
                     ),
                   ),
                 ],
@@ -1206,6 +2001,57 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
+  }
+}
+
+class _CaptchaNoisePainter extends CustomPainter {
+  final int seed;
+  final Color color;
+
+  const _CaptchaNoisePainter({
+    required this.seed,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final random = math.Random(seed);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    for (int i = 0; i < 5; i++) {
+      paint.color = color.withOpacity(i.isEven ? 1 : 0.7);
+      final path = Path()
+        ..moveTo(0, random.nextDouble() * size.height);
+      path.cubicTo(
+        random.nextDouble() * size.width,
+        random.nextDouble() * size.height,
+        random.nextDouble() * size.width,
+        random.nextDouble() * size.height,
+        size.width,
+        random.nextDouble() * size.height,
+      );
+      canvas.drawPath(path, paint);
+    }
+
+    final dotPaint = Paint()..style = PaintingStyle.fill;
+    for (int i = 0; i < 14; i++) {
+      dotPaint.color = color.withOpacity(i.isEven ? 0.6 : 0.35);
+      canvas.drawCircle(
+        Offset(
+          random.nextDouble() * size.width,
+          random.nextDouble() * size.height,
+        ),
+        1 + (random.nextDouble() * 1.4),
+        dotPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CaptchaNoisePainter oldDelegate) {
+    return oldDelegate.seed != seed || oldDelegate.color != color;
   }
 }
 
@@ -1493,4 +2339,8 @@ class _LoginBackdropPainter extends CustomPainter {
   bool shouldRepaint(covariant _LoginBackdropPainter oldDelegate) {
     return oldDelegate.progress != progress;
   }
+}
+
+extension on String {
+  String ifEmpty(String fallback) => trim().isEmpty ? fallback : this;
 }
