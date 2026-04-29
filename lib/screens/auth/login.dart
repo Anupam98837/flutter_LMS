@@ -74,7 +74,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
 
   final math.Random _random = math.Random();
 
-  bool _keepLoggedIn = false;
+  bool _keepLoggedIn = true;
   bool _checkingSavedSession = false;
   bool _sendingOtp = false;
   bool _verifyingOtp = false;
@@ -1074,9 +1074,8 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                       const SizedBox(height: 12),
                       if (_otpSent) ...[
                         _buildOtpPanel(),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 10),
                       ],
-                      _buildKeepSignedInRow(),
                     ],
                   ),
                 ),
@@ -1733,8 +1732,8 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     final borderColor = AppColors.borderSoft(context);
     final activeBorder = AppColors.primary.withOpacity(0.58);
 
-    return AspectRatio(
-      aspectRatio: 1,
+    return SizedBox(
+      height: 62,
       child: TextField(
         controller: controller,
         focusNode: focusNode,
@@ -1802,98 +1801,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
           );
         },
       ),
-    );
-  }
-
-  Widget _buildKeepSignedInRow() {
-    final textSecondary = AppColors.textSecondary(context);
-    final surfaceColor = AppColors.surface(context);
-    final borderColor = AppColors.borderSoft(context);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _keepLoggedIn = !_keepLoggedIn;
-                  });
-                },
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: _keepLoggedIn ? AppColors.primaryGlow : surfaceColor,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: _keepLoggedIn
-                          ? AppColors.primaryGlow
-                          : borderColor,
-                    ),
-                    boxShadow: _keepLoggedIn
-                        ? [
-                            BoxShadow(
-                              color: AppColors.primaryGlow.withOpacity(0.24),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Icon(
-                    Icons.check_rounded,
-                    size: 18,
-                    color: _keepLoggedIn ? Colors.white : Colors.transparent,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Keep me signed in',
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        SizedBox(
-          height: 42,
-          child: OutlinedButton.icon(
-            onPressed:
-                _checkingSavedSession || _googleLoading ? null : _launchGoogleSignIn,
-            style: OutlinedButton.styleFrom(
-              backgroundColor: surfaceColor,
-              foregroundColor: AppColors.textPrimary(context),
-              side: BorderSide(color: borderColor),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-            ),
-            icon: const FaIcon(
-              FontAwesomeIcons.google,
-              size: 14,
-              color: Color(0xFFDB4437),
-            ),
-            label: Text(
-              _googleLoading ? 'Opening...' : 'Google',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 

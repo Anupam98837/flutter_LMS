@@ -13,6 +13,7 @@ import 'package:msitlms/screens/modules/assignments/my_assignments_page.dart';
 import 'package:msitlms/screens/modules/exam/my_quizz_page.dart';
 import 'package:msitlms/screens/modules/notices/my_notices_page.dart';
 import 'package:msitlms/screens/modules/results/my_results_page.dart';
+import 'package:msitlms/screens/modules/routine/my_routine_page.dart';
 import 'package:msitlms/screens/modules/study_materials/my_study_materials_page.dart';
 import 'package:msitlms/screens/modules/syllabus/my_syllabus_page.dart';
 import 'package:msitlms/screens/widgets/coming_soon_page.dart';
@@ -96,6 +97,11 @@ class _StructurePageState extends State<StructurePage> {
       label: 'Quizzes',
       icon: Icons.help_outline_rounded,
       color: AppColors.quizzes,
+    ),
+    StudentDashboardShortcut(
+      label: 'Routine',
+      icon: Icons.calendar_month_outlined,
+      color: AppColors.routine,
     ),
     StudentDashboardShortcut(
       label: 'Result',
@@ -305,6 +311,11 @@ class _StructurePageState extends State<StructurePage> {
       return;
     }
 
+    if (label == 'Routine') {
+      _handleBottomNavTap(6);
+      return;
+    }
+
     _handleBottomNavTap(1);
   }
 
@@ -361,7 +372,23 @@ class _StructurePageState extends State<StructurePage> {
                                 },
                               )
                         : _currentIndex == 5
-                            ? const MySyllabusPage()
+                            ? MySyllabusPage(
+                                onOpenRoutine: () {
+                                  if (!mounted) return;
+                                  setState(() {
+                                    _currentIndex = 6;
+                                  });
+                                },
+                              )
+                        : _currentIndex == 6
+                            ? MyRoutinePage(
+                                onOpenSyllabus: () {
+                                  if (!mounted) return;
+                                  setState(() {
+                                    _currentIndex = 5;
+                                  });
+                                },
+                              )
                         : ComingSoonPage(
                             title: _navItems[_currentIndex].label,
                             subtitle:
@@ -504,7 +531,8 @@ class _StructurePageState extends State<StructurePage> {
           child: Row(
             children: List.generate(_navItems.length, (index) {
               final item = _navItems[index];
-              final isSelected = _currentIndex == index;
+              final isSelected =
+                  _currentIndex == index || (_currentIndex == 6 && index == 5);
 
               return Expanded(
                 child: InkWell(

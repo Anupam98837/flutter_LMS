@@ -4,14 +4,19 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:msitlms/config/appConfig.dart';
 import 'package:msitlms/screens/modules/syllabus/lesson_plan_view_page.dart';
 import 'package:msitlms/theme/app_colors.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MySyllabusPage extends StatefulWidget {
-  const MySyllabusPage({super.key});
+  final VoidCallback? onOpenRoutine;
+
+  const MySyllabusPage({
+    super.key,
+    this.onOpenRoutine,
+  });
 
   @override
   State<MySyllabusPage> createState() => _MySyllabusPageState();
@@ -842,7 +847,6 @@ class _MySyllabusPageState extends State<MySyllabusPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 30,
@@ -870,6 +874,30 @@ class _MySyllabusPageState extends State<MySyllabusPage> {
                 letterSpacing: -0.2,
               ),
             ),
+            const Spacer(),
+            if (widget.onOpenRoutine != null)
+              TextButton.icon(
+                onPressed: widget.onOpenRoutine,
+                icon: const Icon(
+                  Icons.schedule_outlined,
+                  size: 16,
+                ),
+                label: const Text('Routine'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 0,
+                  ),
+                  minimumSize: const Size(0, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  textStyle: const TextStyle(
+                    fontSize: 12.8,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 2),

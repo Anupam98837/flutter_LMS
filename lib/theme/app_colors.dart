@@ -73,6 +73,7 @@ class AppColors {
   static const Color assignments = Color(0xFF7C83F1);
   static const Color quizzes = Color(0xFF79869B);
   static const Color result = Color(0xFF30B981);
+  static const Color routine = Color(0xFF4F87F7);
   static const Color profile = Color(0xFF2F9CE0);
 
   static bool isDark(BuildContext context) {
