@@ -992,91 +992,110 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 8),
-                      _buildBrandBlock(),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Sign in',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: textPrimary,
-                          fontSize: 29,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1.1,
-                          height: 1.04,
-                        ),
+                  constraints: const BoxConstraints(maxWidth: 430),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: surfaceColor.withOpacity(
+                        AppColors.isDark(context) ? 0.94 : 0.96,
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Use your institute email to receive OTP and continue to your dashboard.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          height: 1.45,
-                        ),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(
+                        color: AppColors.borderSoft(context),
                       ),
-                      const SizedBox(height: 20),
-                      if (_notice != null) ...[
-                        _buildInlineNotice(),
-                        const SizedBox(height: 18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.ink(context).withOpacity(0.07),
+                          blurRadius: 28,
+                          offset: const Offset(0, 16),
+                        ),
                       ],
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Institute Email',
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+                      child: Column(
+                        children: [
+                          _buildBrandBlock(),
+                          const SizedBox(height: 18),
+                          Text(
+                            'Sign in',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 25,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.9,
+                              height: 1.02,
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildInputField(
-                        controller: _emailController,
-                        hint: 'Enter your institute email',
-                        icon: FontAwesomeIcons.envelope,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        hasError: _emailError != null,
-                        onChanged: (_) => _handleEmailChanged(),
-                        onFieldSubmitted: (_) {
-                          if (_canSendOtp) {
-                            _sendOtp();
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          _emailError ?? _captchaStatusText(),
-                          style: TextStyle(
-                            color: _emailError != null
-                                ? AppColors.dangerAccent(context)
-                                : (_captchaSolved
-                                      ? AppColors.success
-                                      : textSecondary),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                          const SizedBox(height: 8),
+                          Text(
+                            'Use your institute email to receive OTP and continue to your dashboard.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              height: 1.42,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 16),
+                          if (_notice != null) ...[
+                            _buildInlineNotice(),
+                            const SizedBox(height: 14),
+                          ],
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Institute Email',
+                              style: TextStyle(
+                                color: textPrimary,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 7),
+                          _buildInputField(
+                            controller: _emailController,
+                            hint: 'Enter your institute email',
+                            icon: FontAwesomeIcons.envelope,
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            hasError: _emailError != null,
+                            onChanged: (_) => _handleEmailChanged(),
+                            onFieldSubmitted: (_) {
+                              if (_canSendOtp) {
+                                _sendOtp();
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 7),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _emailError ?? _captchaStatusText(),
+                              style: TextStyle(
+                                color: _emailError != null
+                                    ? AppColors.dangerAccent(context)
+                                    : (_captchaSolved
+                                          ? AppColors.success
+                                          : textSecondary),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildCaptchaCard(),
+                          if (_otpSent) ...[
+                            const SizedBox(height: 10),
+                            _buildOtpPanel(),
+                          ],
+                        ],
                       ),
-                      const SizedBox(height: 14),
-                      _buildCaptchaCard(),
-                      const SizedBox(height: 12),
-                      if (_otpSent) ...[
-                        _buildOtpPanel(),
-                        const SizedBox(height: 10),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -1091,25 +1110,17 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   Widget _buildBrandBlock() {
     final surfaceColor = AppColors.surface(context);
     final borderColor = AppColors.borderSoft(context);
-    final inkColor = AppColors.ink(context);
     final textSecondary = AppColors.textSecondary(context);
     return Column(
       children: [
         Container(
-          width: 94,
-          height: 94,
-          padding: const EdgeInsets.all(12),
+          width: 76,
+          height: 76,
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: surfaceColor,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(color: borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: inkColor.withOpacity(0.05),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
           ),
           child: Image.asset(
             'assets/icons/logo.png',
@@ -1117,12 +1128,21 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
           ),
         ),
         const SizedBox(height: 10),
-        Text(
-          'MSIT LMS',
-          style: TextStyle(
-            color: textSecondary.withOpacity(0.82),
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.surface3(context),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: borderColor),
+          ),
+          child: Text(
+            'MSIT LMS',
+            style: TextStyle(
+              color: textSecondary.withOpacity(0.9),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
           ),
         ),
       ],
@@ -1160,10 +1180,10 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+      padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
       decoration: BoxDecoration(
         color: fillColor,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: borderColor,
           width: 1.2,
@@ -1173,8 +1193,8 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
@@ -1205,16 +1225,16 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                     _noticeTitle(notice.type),
                     style: TextStyle(
                       color: accentColor,
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     notice.message,
                     style: TextStyle(
                       color: labelColor,
-                      fontSize: 14,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                       height: 1.35,
                     ),
@@ -1266,12 +1286,12 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
             color: inkColor.withOpacity(0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -1285,35 +1305,35 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
         textAlignVertical: TextAlignVertical.center,
         style: TextStyle(
           color: textPrimary,
-          fontWeight: FontWeight.w700,
-          fontSize: 15,
+          fontWeight: FontWeight.w800,
+          fontSize: 14,
         ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(
             color: textSecondary.withOpacity(0.92),
-            fontSize: 15,
+            fontSize: 13.5,
             fontWeight: FontWeight.w600,
           ),
           filled: true,
           fillColor: surfaceColor,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 18,
-            vertical: 19,
+            horizontal: 16,
+            vertical: 16,
           ),
           prefixIcon: SizedBox(
-            width: 54,
+            width: 48,
             child: Center(
               child: FaIcon(
                 icon,
-                size: 18,
+                size: 16,
                 color: iconColor,
               ),
             ),
           ),
           prefixIconConstraints: const BoxConstraints(
-            minWidth: 54,
-            minHeight: 54,
+            minWidth: 48,
+            minHeight: 50,
           ),
           suffixIcon: suffix,
           suffixIconConstraints: const BoxConstraints(
@@ -1321,14 +1341,14 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
             minHeight: 48,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(15),
             borderSide: BorderSide(
               color: borderColor,
               width: 1.1,
             ),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(15),
             borderSide: BorderSide(
               color: hasError
                   ? AppColors.softBorder(context)
@@ -1354,10 +1374,10 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
       opacity: isLocked ? 0.72 : 1,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: surface3Color,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: borderColor),
         ),
         child: Column(
@@ -1399,7 +1419,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
               borderColor,
               isLocked,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -1409,14 +1429,14 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                     isLocked,
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 SizedBox(
-                  width: 112,
+                  width: 104,
                   child: _buildOtpSendButton(),
                 ),
               ],
             ),
-            const SizedBox(height: 9),
+            const SizedBox(height: 8),
             Text(
               _captchaSolved
                   ? 'Captcha verified. You can send OTP now.'
@@ -1452,7 +1472,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                 FocusManager.instance.primaryFocus?.unfocus();
               },
         child: Ink(
-          height: 50,
+          height: 46,
           decoration: BoxDecoration(
             color: surfaceColor,
             borderRadius: BorderRadius.circular(14),
@@ -1487,7 +1507,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                             color: index.isEven
                                 ? const Color(0xFF6B2528)
                                 : AppColors.primary,
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1.5,
                           ),
@@ -1539,7 +1559,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
         fillColor: surfaceColor,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
-          vertical: 14,
+          vertical: 13,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -1573,7 +1593,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     }
 
     return SizedBox(
-      height: 50,
+      height: 46,
       width: double.infinity,
       child: ElevatedButton(
         onPressed: _canSendOtp ? _sendOtp : null,
@@ -1584,7 +1604,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1606,7 +1626,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                 label,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -1672,17 +1692,17 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             children: [
               for (int index = 0; index < _otpLength; index++) ...[
                 Expanded(child: _buildOtpDigit(index)),
                 if (index != _otpLength - 1)
-                  SizedBox(width: index == 2 ? 14 : 10),
+                  SizedBox(width: index == 2 ? 12 : 8),
               ],
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

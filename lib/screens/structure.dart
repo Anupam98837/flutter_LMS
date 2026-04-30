@@ -33,7 +33,8 @@ class StructurePage extends StatefulWidget {
   State<StructurePage> createState() => _StructurePageState();
 }
 
-class _StructurePageState extends State<StructurePage> {
+class _StructurePageState extends State<StructurePage>
+    with SingleTickerProviderStateMixin {
   static const List<_BottomNavItem> _navItems = [
     _BottomNavItem(
       label: 'Home',
@@ -57,8 +58,8 @@ class _StructurePageState extends State<StructurePage> {
     ),
     _BottomNavItem(
       label: 'Exam',
-      icon: Icons.gps_fixed_rounded,
-      activeIcon: Icons.gps_fixed_rounded,
+      icon: Icons.quiz_outlined,
+      activeIcon: Icons.quiz_rounded,
     ),
     _BottomNavItem(
       label: 'Syllabus',
@@ -116,6 +117,7 @@ class _StructurePageState extends State<StructurePage> {
   ];
 
   late int _currentIndex;
+  int _previousIndex = 0;
   String? _profileImageUrl;
   String? _profileAvatarText;
   String _displayUserName = 'Student';
@@ -124,6 +126,7 @@ class _StructurePageState extends State<StructurePage> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex.clamp(0, _navItems.length - 1).toInt();
+    _previousIndex = _currentIndex;
     _displayUserName = widget.userName?.trim().isNotEmpty == true
         ? widget.userName!.trim()
         : 'Student';
@@ -148,9 +151,7 @@ class _StructurePageState extends State<StructurePage> {
     final raw = value?.trim() ?? '';
     if (raw.isEmpty) return null;
     if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-    if (raw.startsWith('/')) {
-      return '${AppConfig.baseUrl}$raw';
-    }
+    if (raw.startsWith('/')) return '${AppConfig.baseUrl}$raw';
     return '${AppConfig.baseUrl}/$raw';
   }
 
@@ -159,15 +160,13 @@ class _StructurePageState extends State<StructurePage> {
     Map<String, String>? headers,
   }) async {
     final client = http.Client();
-
     try {
       final response = await client
           .get(
             Uri.parse(endpoint),
             headers: {
               HttpHeaders.acceptHeader: 'application/json',
-              HttpHeaders.userAgentHeader:
-                  'MSITLMS/1.0 (Flutter iOS/Android)',
+              HttpHeaders.userAgentHeader: 'MSITLMS/1.0 (Flutter iOS/Android)',
               ...?headers,
             },
           )
@@ -194,15 +193,12 @@ class _StructurePageState extends State<StructurePage> {
   Future<void> _loadMiniProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token')?.trim() ?? '';
-
     if (token.isEmpty) return;
 
     try {
       final result = await _getJson(
         '${AppConfig.baseUrl}/api/profile/mini',
-        headers: {
-          HttpHeaders.authorizationHeader: 'Bearer $token',
-        },
+        headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
       );
 
       final statusCode = result['statusCode'] as int;
@@ -214,28 +210,25 @@ class _StructurePageState extends State<StructurePage> {
           : payload;
 
       setState(() {
-        _profileImageUrl = _normalizeProfileImageUrl(
-          block['image']?.toString(),
-        );
+        _profileImageUrl =
+            _normalizeProfileImageUrl(block['image']?.toString());
         _profileAvatarText = block['avatar_text']?.toString();
       });
-    } catch (_) {
-      // Keep the header fallback initial when the profile mini API is unavailable.
-    }
+    } catch (_) {}
   }
 
   void _handleBottomNavTap(int index) {
     if (_currentIndex == index) return;
-
     setState(() {
+      _previousIndex = _currentIndex;
       _currentIndex = index;
     });
   }
 
   Future<void> _openProfilePage() async {
     final result = await Navigator.of(context).push<ProfilePageResult>(
-      MaterialPageRoute(
-        builder: (_) => ProfilePage(
+      _smoothRoute(
+        ProfilePage(
           initialName: _safeUserName,
           initialImageUrl: _profileImageUrl,
           initialAvatarText: _profileAvatarText,
@@ -250,15 +243,10 @@ class _StructurePageState extends State<StructurePage> {
         if (result.name != null && result.name!.trim().isNotEmpty) {
           _displayUserName = result.name!.trim();
         }
-        if (result.imageUrl != null) {
-          _profileImageUrl = result.imageUrl;
-        }
-        if (result.avatarText != null) {
-          _profileAvatarText = result.avatarText;
-        }
+        if (result.imageUrl != null) _profileImageUrl = result.imageUrl;
+        if (result.avatarText != null) _profileAvatarText = result.avatarText;
       });
     }
-
     unawaited(_loadMiniProfile());
   }
 
@@ -269,54 +257,62 @@ class _StructurePageState extends State<StructurePage> {
       unawaited(_openProfilePage());
       return;
     }
-
-    if (label == 'Syllabus') {
+    if (label == 'Syllabus' || label == 'Lesson Plan') {
       _handleBottomNavTap(5);
       return;
     }
-
-    if (label == 'Lesson Plan') {
-      _handleBottomNavTap(5);
-      return;
-    }
-
     if (label == 'Notices') {
       _handleBottomNavTap(2);
       return;
     }
-
     if (label == 'Materials') {
       _handleBottomNavTap(1);
       return;
     }
-
     if (label == 'Assignments') {
       _handleBottomNavTap(3);
       return;
     }
-
     if (label == 'Quizzes') {
       _handleBottomNavTap(4);
       return;
     }
-
     if (label == 'Result') {
       unawaited(
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => const MyResultsPage(),
-          ),
+        Navigator.of(context).push<void>(
+          _smoothRoute(const MyResultsPage()),
         ),
       );
       return;
     }
-
     if (label == 'Routine') {
       _handleBottomNavTap(6);
       return;
     }
-
     _handleBottomNavTap(1);
+  }
+
+  // ── Smooth slide-up route ─────────────────────────────────────────────────
+  Route<T> _smoothRoute<T>(Widget page) {
+    return PageRouteBuilder<T>(
+      pageBuilder: (_, __, ___) => page,
+      transitionDuration: const Duration(milliseconds: 320),
+      reverseTransitionDuration: const Duration(milliseconds: 280),
+      transitionsBuilder: (_, animation, secondaryAnimation, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.06),
+            end: Offset.zero,
+          ).animate(curve),
+          child: FadeTransition(opacity: curve, child: child),
+        );
+      },
+    );
   }
 
   @override
@@ -326,20 +322,21 @@ class _StructurePageState extends State<StructurePage> {
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
+          // Ambient glow orbs
           Positioned(
-            top: 220,
-            left: -90,
+            top: 200,
+            left: -100,
             child: _glowOrb(
               color: AppColors.dashboardGlowStart(context),
-              size: 300,
+              size: 320,
             ),
           ),
           Positioned(
-            top: 340,
-            right: -80,
+            top: 360,
+            right: -90,
             child: _glowOrb(
               color: AppColors.dashboardGlowEnd(context),
-              size: 260,
+              size: 280,
             ),
           ),
           Column(
@@ -347,54 +344,25 @@ class _StructurePageState extends State<StructurePage> {
               _buildHeader(),
               Expanded(
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
+                  duration: const Duration(milliseconds: 260),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) {
+                    final isForward = _currentIndex >= _previousIndex;
+                    return SlideTransition(
+                      position: Tween<Offset>(
+                        begin: Offset(isForward ? 0.04 : -0.04, 0),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      ),
+                    );
+                  },
                   child: KeyedSubtree(
                     key: ValueKey<int>(_currentIndex),
-                    child: _currentIndex == 0
-                        ? StudentDashboardPage(
-                            userName: _safeUserName,
-                            shortcuts: _shortcuts,
-                            onShortcutTap: _handleDashboardShortcutTap,
-                          )
-                        : _currentIndex == 1
-                            ? const MyStudyMaterialsPage()
-                        : _currentIndex == 2
-                            ? const MyNoticesPage()
-                        : _currentIndex == 3
-                            ? const MyAssignmentsPage()
-                        : _currentIndex == 4
-                            ? MyQuizzPage(
-                                onBackToDashboard: () {
-                                  if (!mounted) return;
-                                  setState(() {
-                                    _currentIndex = 0;
-                                  });
-                                },
-                              )
-                        : _currentIndex == 5
-                            ? MySyllabusPage(
-                                onOpenRoutine: () {
-                                  if (!mounted) return;
-                                  setState(() {
-                                    _currentIndex = 6;
-                                  });
-                                },
-                              )
-                        : _currentIndex == 6
-                            ? MyRoutinePage(
-                                onOpenSyllabus: () {
-                                  if (!mounted) return;
-                                  setState(() {
-                                    _currentIndex = 5;
-                                  });
-                                },
-                              )
-                        : ComingSoonPage(
-                            title: _navItems[_currentIndex].label,
-                            subtitle:
-                                '${_navItems[_currentIndex].label} section is coming soon.',
-                            icon: _navItems[_currentIndex].activeIcon,
-                          ),
+                    child: _buildPage(_currentIndex),
                   ),
                 ),
               ),
@@ -406,21 +374,74 @@ class _StructurePageState extends State<StructurePage> {
     );
   }
 
+  Widget _buildPage(int index) {
+    if (index == 0) {
+      return StudentDashboardPage(
+        userName: _safeUserName,
+        shortcuts: _shortcuts,
+        onShortcutTap: _handleDashboardShortcutTap,
+      );
+    }
+    if (index == 1) return const MyStudyMaterialsPage();
+    if (index == 2) return const MyNoticesPage();
+    if (index == 3) return const MyAssignmentsPage();
+    if (index == 4) {
+      return MyQuizzPage(
+        onBackToDashboard: () {
+          if (!mounted) return;
+          setState(() {
+            _previousIndex = _currentIndex;
+            _currentIndex = 0;
+          });
+        },
+      );
+    }
+    if (index == 5) {
+      return MySyllabusPage(
+        onOpenRoutine: () {
+          if (!mounted) return;
+          setState(() {
+            _previousIndex = _currentIndex;
+            _currentIndex = 6;
+          });
+        },
+      );
+    }
+    if (index == 6) {
+      return MyRoutinePage(
+        onOpenSyllabus: () {
+          if (!mounted) return;
+          setState(() {
+            _previousIndex = _currentIndex;
+            _currentIndex = 5;
+          });
+        },
+      );
+    }
+    return ComingSoonPage(
+      title: _navItems[index.clamp(0, _navItems.length - 1)].label,
+      subtitle:
+          '${_navItems[index.clamp(0, _navItems.length - 1)].label} section is coming soon.',
+      icon: _navItems[index.clamp(0, _navItems.length - 1)].activeIcon,
+    );
+  }
+
   Widget _buildHeader() {
     final surfaceColor = AppColors.surface(context);
-    final inkColor = AppColors.ink(context);
     final borderColor = AppColors.borderSoft(context);
+    final isDark = AppColors.isDark(context);
+
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor,
-        border: Border(
-          bottom: BorderSide(color: borderColor),
-        ),
+        border: Border(bottom: BorderSide(color: borderColor, width: 0.8)),
         boxShadow: [
           BoxShadow(
-            color: inkColor.withOpacity(0.035),
-            blurRadius: 8,
-            offset: const Offset(0, 1),
+            color: isDark
+                ? Colors.black.withOpacity(0.18)
+                : AppColors.primary.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -444,6 +465,8 @@ class _StructurePageState extends State<StructurePage> {
                 onTap: _openProfilePage,
                 child: _buildHeaderCircle(
                   background: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                     colors: [
                       AppColors.dashboardAvatarStart,
                       AppColors.dashboardAvatarEnd,
@@ -455,15 +478,11 @@ class _StructurePageState extends State<StructurePage> {
                         ? Image.network(
                             _profileImageUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) {
-                              return _HeaderProfileFallback(
-                                letter: _profileFallbackLetter,
-                              );
-                            },
+                            errorBuilder: (_, __, ___) => _HeaderProfileFallback(
+                              letter: _profileFallbackLetter,
+                            ),
                           )
-                        : _HeaderProfileFallback(
-                            letter: _profileFallbackLetter,
-                          ),
+                        : _HeaderProfileFallback(letter: _profileFallbackLetter),
                   ),
                 ),
               ),
@@ -481,22 +500,28 @@ class _StructurePageState extends State<StructurePage> {
     bool showShadow = true,
   }) {
     final surfaceColor = AppColors.surface(context);
-    final inkColor = AppColors.ink(context);
+    final isDark = AppColors.isDark(context);
     return Container(
-      width: 46,
-      height: 46,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
         color: background == null ? surfaceColor : null,
         gradient: background,
         shape: BoxShape.circle,
+        border: Border.all(
+          color: isDark
+              ? AppColors.darkBorderMedium
+              : AppColors.lightBorderMedium,
+          width: 1,
+        ),
         boxShadow: showShadow
             ? [
                 BoxShadow(
-                  color: (glowColor ?? inkColor).withOpacity(
-                    glowColor == null ? 0.05 : 0.28,
+                  color: (glowColor ?? AppColors.primary).withOpacity(
+                    glowColor == null ? 0.06 : 0.24,
                   ),
-                  blurRadius: glowColor == null ? 12 : 18,
-                  offset: Offset(0, glowColor == null ? 4 : 8),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
                 ),
               ]
             : null,
@@ -505,29 +530,31 @@ class _StructurePageState extends State<StructurePage> {
     );
   }
 
+  // ── Animated pill bottom navigation ──────────────────────────────────────
   Widget _buildBottomNavigation() {
     final surfaceColor = AppColors.surface(context);
-    final inkColor = AppColors.ink(context);
-    final mutedColor = AppColors.dashboardMutedColor(context);
+    final isDark = AppColors.isDark(context);
     final borderColor = AppColors.borderSoft(context);
+    final mutedColor = AppColors.dashboardMutedColor(context);
+
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor,
-        border: Border(
-          top: BorderSide(color: borderColor),
-        ),
+        border: Border(top: BorderSide(color: borderColor, width: 0.8)),
         boxShadow: [
           BoxShadow(
-            color: inkColor.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, -1),
+            color: isDark
+                ? Colors.black.withOpacity(0.20)
+                : AppColors.primary.withOpacity(0.05),
+            blurRadius: 16,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 4, 6, 2),
+          padding: const EdgeInsets.fromLTRB(4, 6, 4, 4),
           child: Row(
             children: List.generate(_navItems.length, (index) {
               final item = _navItems[index];
@@ -535,33 +562,37 @@ class _StructurePageState extends State<StructurePage> {
                   _currentIndex == index || (_currentIndex == 6 && index == 5);
 
               return Expanded(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: () => _handleBottomNavTap(index),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 6,
+                      horizontal: 4,
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          isSelected ? item.activeIcon : item.icon,
-                          size: 23,
-                          color: isSelected
-                              ? AppColors.primary
-                              : mutedColor,
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(
+                            isSelected ? item.activeIcon : item.icon,
+                            key: ValueKey('${index}_$isSelected'),
+                            size: 22,
+                            color: isSelected ? AppColors.primary : mutedColor,
+                          ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item.label,
+                        const SizedBox(height: 3),
+                        AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
                           style: TextStyle(
-                            color: isSelected
-                                ? AppColors.primary
-                                : mutedColor,
+                            color: isSelected ? AppColors.primary : mutedColor,
                             fontSize: 9.5,
                             fontWeight: isSelected
                                 ? FontWeight.w800
-                                : FontWeight.w700,
+                                : FontWeight.w500,
                           ),
+                          child: Text(item.label),
                         ),
                       ],
                     ),
@@ -575,10 +606,7 @@ class _StructurePageState extends State<StructurePage> {
     );
   }
 
-  Widget _glowOrb({
-    required Color color,
-    required double size,
-  }) {
+  Widget _glowOrb({required Color color, required double size}) {
     return IgnorePointer(
       child: Container(
         width: size,
@@ -587,8 +615,8 @@ class _StructurePageState extends State<StructurePage> {
           shape: BoxShape.circle,
           gradient: RadialGradient(
             colors: [
-              color.withOpacity(0.72),
-              color.withOpacity(0.24),
+              color.withOpacity(0.55),
+              color.withOpacity(0.16),
               Colors.transparent,
             ],
           ),
@@ -612,10 +640,7 @@ class _BottomNavItem {
 
 class _HeaderProfileFallback extends StatelessWidget {
   final String letter;
-
-  const _HeaderProfileFallback({
-    required this.letter,
-  });
+  const _HeaderProfileFallback({required this.letter});
 
   @override
   Widget build(BuildContext context) {
@@ -630,7 +655,7 @@ class _HeaderProfileFallback extends StatelessWidget {
           color: AppColors.isDark(context)
               ? AppColors.textSecondary(context)
               : AppColors.dashboardAvatarText,
-          fontSize: 18,
+          fontSize: 17,
           fontWeight: FontWeight.w900,
         ),
       ),
